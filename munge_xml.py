@@ -5,19 +5,30 @@ from datetime import datetime as dt
 import datetime
 
 def main():
+	ACTList = getACTList()
+	
 	for root, _, files in os.walk("study_fields_xml"):
 		for index, file in enumerate(files):
 			fullpath = os.path.join(root, file)
 			
 			trial = Trial(fullpath)
-			if index == 0:
-				print trial.outputHeader()
-
-# 			print trial.outputLine()
-			if trial.isACT() and trial.includedInPrayle():
+			
+			if trial.id in ACTList:
+				trial.populate()
+				if index == 0:
+					print trial.outputHeader()
+	
 				print trial.outputLine()
+# 				if trial.isACT() and trial.includedInPrayle():
+# 					print trial.outputLine()
 		
 		print "\n" # end the file with a newline
+
+
+
+def getACTList():
+	return [line.strip() for line in open('Prayle ACTs.txt')]
+
 
 
 class Trial(object):
@@ -26,13 +37,14 @@ class Trial(object):
 		self.fields = []
 		
 		# Header fields
-		self.headerFields = ['NCT ID', 'Source', 'Recruitment', 'Interventions',
+		self.headerFields = ['NCT ID', 'Lead Sponsor', 'Sponsor Class', 'Recruitment', 'Interventions',
 							 'Start Date', 'Completion Date', 'Primary Completion Date',
 							 'Phase', 'Countries']
 		
 		# Field variables
-		self.id = ""
-		self.source = ""
+		self.id = os.path.splitext(os.path.basename(path))[0]
+		self.leadSponsor = ""
+		self.sponsorClass = ""
 		self.recruitment = ""
 		self.interventions = ""
 		self.startDate = None
@@ -40,13 +52,13 @@ class Trial(object):
 		self.primaryCompletionDate = None
 		self.phase = ""
 		self.countries = ""
-		
-		# Run!
+	
+	
+	
+	def populate(self):
 		self.runXSLT()
 		self.processFields()
-	
-	
-	
+
 	###
 	# Getting the data and parsing it
 	###
@@ -60,17 +72,20 @@ class Trial(object):
 	
 	
 	def processFields(self):
-		# R is going to need 3-part dates, but the XML doesn't include a day. Sometimes.
-		# So we have to guess.
-		self.id = self.fields[0]
-		self.source = self.fields[1]
-		self.recruitment = self.fields[2]
-		self.interventions = self.fields[3]
-		self.startDate = self.parseDate(self.fields[4])
-		self.completionDate = self.parseDate(self.fields[5])
-		self.primaryCompletionDate = self.parseDate(self.fields[6])
-		self.phase = self.fields[7]
-		self.countries = self.fields[8]
+		(self.leadSponsor,
+		 self.sponsorClass,
+		 self.recruitment,
+		 self.interventions,
+		 self.startDate,
+		 self.completionDate,
+		 self.primaryCompletionDate,
+		 self.phase,
+		 self.countries) = self.fields[1:]
+		 
+		# Date munging
+		self.startDate = self.parseDate(self.startDate)
+		self.completionDate = self.parseDate(self.completionDate)
+		self.primaryCompletionDate = self.parseDate(self.primaryCompletionDate)
 	
 	
 	
