@@ -2,10 +2,13 @@
 
 import os, os.path, subprocess
 from datetime import datetime as dt
-import datetime
+import datetime, calendar
+import locale
 
 def main():
 	ACTList = getACTList()
+	allFines = 0
+	locale.setlocale(locale.LC_ALL, 'en_US')
 	
 	for root, _, files in os.walk("study_fields_xml"):
 		for index, file in enumerate(files):
@@ -19,15 +22,28 @@ def main():
 					print trial.outputHeader()
 	
 				print trial.outputLine()
-# 				if trial.isACT() and trial.includedInPrayle():
-# 					print trial.outputLine()
+				fine = trial.fine()
+				print fine
+				allFines += fine
 		
+		print
+		print "Total Fines: $" + locale.format("%d", allFines, grouping=True)
 		print "\n" # end the file with a newline
 
 
 
 def getACTList():
 	return [line.strip() for line in open('Prayle ACTs.txt')]
+
+
+
+def addMonths(sourcedate, months):
+	month = sourcedate.month - 1 + months
+	year = sourcedate.year + month / 12
+	month = month % 12 + 1
+	day = min(sourcedate.day, calendar.monthrange(year, month)[1])
+	
+	return sourcedate.replace(year, month, day)
 
 
 
@@ -38,7 +54,7 @@ class Trial(object):
 		
 		# Header fields
 		self.headerFields = ['NCT ID', 'Lead Sponsor', 'Sponsor Class', 'Recruitment', 'Interventions',
-							 'Start Date', 'Completion Date', 'Primary Completion Date',
+							 'Start Date', 'Completion Date', 'Primary Completion Date', 'Results Date',
 							 'Phase', 'Countries']
 		
 		# Field variables
@@ -50,6 +66,7 @@ class Trial(object):
 		self.startDate = None
 		self.completionDate = None
 		self.primaryCompletionDate = None
+		self.resultsDate = None
 		self.phase = ""
 		self.countries = ""
 	
@@ -79,6 +96,7 @@ class Trial(object):
 		 self.startDate,
 		 self.completionDate,
 		 self.primaryCompletionDate,
+		 self.resultsDate,
 		 self.phase,
 		 self.countries) = self.fields[1:]
 		 
@@ -86,6 +104,7 @@ class Trial(object):
 		self.startDate = self.parseDate(self.startDate)
 		self.completionDate = self.parseDate(self.completionDate)
 		self.primaryCompletionDate = self.parseDate(self.primaryCompletionDate)
+		self.resultsDate = self.parseDate(self.resultsDate)
 	
 	
 	
@@ -155,7 +174,25 @@ class Trial(object):
 	###
 	
 	def fine(self):
-		return 10000
+		fine = 0
+		
+		if self.resultsDate:
+			# Since the XML doesn't tell us the day on which the trial ended, work from the beginning of the next month
+			fineStartDate = addMonths(self.primaryCompletionDate, 1)
+			
+			# The responsible person has a year to submit the trial results
+			fineStartDate = addMonths(fineStartDate, 12)
+			
+			# The secretary issues a notice, which presumably has to arrive in the mail...
+			fineStartDate += datetime.timedelta(days=7)
+			
+			# And the responsible person is allowed 30 days to comply
+			fineStartDate += datetime.timedelta(days=30)
+			
+			fineLength = datetime.date.today() - fineStartDate
+			fine = fineLength.days * 10000
+		
+		return fine
 
 
 	
