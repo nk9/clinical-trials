@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from collections import defaultdict
 import os, os.path, subprocess
 from datetime import datetime as dt
 import datetime, calendar
@@ -7,26 +8,37 @@ import locale
 
 def main():
 	ACTList = getACTList()
+	fines = defaultdict(int)
 	allFines = 0
 	locale.setlocale(locale.LC_ALL, 'en_US')
+	
 	
 	for root, _, files in os.walk("study_fields_xml"):
 		for index, file in enumerate(files):
 			fullpath = os.path.join(root, file)
-			
+
 			trial = Trial(fullpath)
+			trial.populate()
 			
-			if trial.id in ACTList:
-				trial.populate()
-				if index == 0:
-					print trial.outputHeader()
-	
+			if index == 0:
+				print trial.outputHeader()
+			
+			if trial.isACT():
 				print trial.outputLine()
+				
+				# calculate fines
 				fine = trial.fine()
-				print fine
+				fines[trial.sponsorClass] += fine
 				allFines += fine
 		
-		print
+		print "\n"
+		
+		# print fines by class
+		for key, value in fines.iteritems():
+			percent = (float(value) / float(allFines)) * 100
+			print percent
+			print "%s = %d%% (%s)" % (key, percent, locale.format("%d", value, grouping=True))
+		
 		print "Total Fines: $" + locale.format("%d", allFines, grouping=True)
 		print "\n" # end the file with a newline
 
