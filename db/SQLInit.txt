@@ -1,0 +1,4 @@
+CREATE TABLE trials (id INTEGER PRIMARY KEY, title TEXT, nctID TEXT, sponsor_id INTEGER, status TEXT, startDate TEXT, completionDate TEXT, primaryCompletionDate TEXT, resultsDate TEXT, phase TEXT, countries TEXT)
+CREATE TABLE sponsors (id INTEGER PRIMARY KEY, name TEXT, class_id INTEGER)
+CREATE TABLE sponsorClasses (id INTEGER PRIMARY KEY, class TEXT)
+CREATE TABLE interventions (id INTEGER PRIMARY KEY, trial_id INTEGER, type TEXT, intervention TEXT)
