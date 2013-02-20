@@ -69,12 +69,12 @@ class DBManager(object):
 	def openDB(self):
 		self.connection = sqlite3.connect(self.path)
 		self.cursor = self.connection.cursor()
+		self.cursor.execute('PRAGMA foreign_keys = ON;')
 	
 	def initalize(self):
-		SQLInit = [line.strip() for line in open('db/SQLInit.txt')]
+		SQLInit = open('db/SQLInit.txt').read()
 		
-		for step in SQLInit:
-			self.cursor.execute(step)
+		self.cursor.executescript(SQLInit)
 		
 		self.connection.commit()
 	
@@ -83,7 +83,10 @@ class DBManager(object):
 	
 	def addTrial(self, trial):
 		print trial.id
-		self.cursor.execute('INSERT INTO sponsorClasses (class) VALUES(?)', (trial.id,))
+		
+		# Insert countries where appropriate
+		for country in trial.countries:
+			self.cursor.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
 	
 	def commitTrials(self):
 		self.connection.commit()
@@ -115,14 +118,13 @@ class Trial(object):
 		self.primaryCompletionDate = ''
 		self.resultsDate = ''
 		self.phase = ""
-		self.countries = ""
+		self.countries = []
 		self.title = ""
 	
 	
 	
 	def populate(self):
 		self.parseXML()
-		self.processFields()
 	
 	
 	###
@@ -132,40 +134,45 @@ class Trial(object):
 		etree = xml.fromstring(open(self.path).read())
 
 		# Pull out the data
-		self.title = etree.find("brief_title")
-		self.leadSponsor = etree.find("sponsors/lead_sponsor/agency")
-		self.sponsorClass = etree.find("sponsors/lead_sponsor/agency_class")
-		self.recruitment = etree.find("overall_status")
-		self.startDate = etree.find("start_date")
-		self.completionDate = etree.find("completion_date")
-		self.primaryCompletionDate = etree.find("primary_completion_date")
-		self.phase = etree.find("phase")
-	
-	
-	
-	def processFields(self):
-		# Date munging
-		self.startDate = self.parseDate(self.startDate)
-		self.completionDate = self.parseDate(self.completionDate)
-		self.primaryCompletionDate = self.parseDate(self.primaryCompletionDate)
-# 		self.resultsDate = self.parseDate(self.resultsDate)
-	
-	
-	
-	def parseDate(self, dateString):
-		outDate = datetime.date(datetime.MINYEAR, 1, 1) # MINYEAR = invalid date
+		self.title = etree.find("brief_title").text
+		self.leadSponsor = etree.find("sponsors/lead_sponsor/agency").text
+		self.sponsorClass = etree.find("sponsors/lead_sponsor/agency_class").text
+		self.recruitment = etree.find("overall_status").text
+		self.phase = etree.find("phase").text
 		
-		if dateString != None and len(dateString):
+		for e in etree.findall("location_countries/country"):
+			self.countries.append(e.text)
+
+		# Dates
+		self.startDate = self.parseDate(etree.find("start_date"))
+		self.completionDate = self.parseDate(etree.find("completion_date"))
+		self.primaryCompletionDate = self.parseDate(etree.find("primary_completion_date"))
+		self.resultsDate = self.parseDate(etree.find("firstreceived_results_date"))
+	
+	
+	
+	def parseDate(self, date):
+		stringToParse = ''
+# 		outDate = datetime.date(datetime.MINYEAR, 1, 1) # MINYEAR = invalid date
+		outDate = None
+		
+		if isinstance(date, xml.Element):
+			stringToParse = date.text
+		elif isinstance(date, str):
+			stringToParse = date
+		
+		if len(stringToParse):
 			try:
-				outDate = dt.strptime(dateString, '%B %d, %Y').date()
+				outDate = dt.strptime(stringToParse, '%B %d, %Y').date()
 			except Exception as e:
 				try:
-					outDate = dt.strptime(dateString, '%B %Y').date()
+					outDate = dt.strptime(stringToParse, '%B %Y').date()
 				except Exception as e:
-					print "Failed parsing date for %s, '%s': %s" % (self.id, dateString, e)
+					print "Failed parsing date for %s, '%s': %s" % (self.id, stringToParse, e)
 		
 		return outDate
-
+	
+	
                 
 # Default function is main()
 if __name__ == '__main__':
