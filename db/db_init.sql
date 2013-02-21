@@ -1,0 +1,46 @@
+CREATE TABLE countries (
+	id INTEGER PRIMARY KEY,
+	name TEXT UNIQUE
+);
+
+CREATE TABLE sponsorClasses (
+	id INTEGER PRIMARY KEY,
+	class TEXT UNIQUE
+);
+
+CREATE TABLE sponsors (
+	id INTEGER PRIMARY KEY,
+	name TEXT UNIQUE,
+	class_id INTEGER,
+	FOREIGN KEY (class_id) REFERENCES sponsorClasses(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE trials (
+	id INTEGER PRIMARY KEY,
+	sponsor_id INTEGER,
+	title TEXT,
+	nctID TEXT UNIQUE NOT NULL,
+	status TEXT,
+	startDate TEXT,
+	completionDate TEXT,
+	primaryCompletionDate TEXT,
+	resultsDate TEXT,
+	phaseMask INTEGER,
+	FOREIGN KEY (sponsor_id) REFERENCES sponsors(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE interventions (
+	id INTEGER PRIMARY KEY,
+	trial_id INTEGER,
+	type TEXT,
+	intervention TEXT,
+	FOREIGN KEY (trial_id) REFERENCES trials(id)
+);
+
+CREATE TABLE trialCountries (
+	trial_id INTEGER,
+	country_id INTEGER,
+	FOREIGN KEY(trial_id) REFERENCES trials(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY(country_id) REFERENCES countries(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY (trial_id, country_id)
+);
