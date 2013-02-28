@@ -21,9 +21,9 @@ CREATE TABLE trials (
 	title TEXT,
 	nctID TEXT UNIQUE NOT NULL,
 	status TEXT,
-	startDate TEXT,
-	completionDate TEXT,
-	primaryCompletionDate TEXT,
+	startDate INTEGER,
+	completionDate INTEGER,
+	primaryCompletionDate INTEGER,
 	resultsDate TEXT,
 	phaseMask INTEGER,
 	FOREIGN KEY (sponsor_id) REFERENCES sponsors(id) ON DELETE CASCADE ON UPDATE CASCADE

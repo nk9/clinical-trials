@@ -1,11 +1,12 @@
 #!/usr/bin/python
 
 import xml.etree.ElementTree as xml
-import os, subprocess
+import os
 from datetime import datetime as dt
-import datetime, calendar
+import time
 import sqlite3
 import argparse
+
 
 def main():
 	os.chdir("..")
@@ -29,7 +30,7 @@ def main():
 	# Walk through the xml files and add them to the DB
 	for root, dirs, files in os.walk("study_fields_xml"):
 		for index, file in enumerate(files):
-			if index > 1000 and args.short:
+			if index > 10000 and args.short:
 				break
 			
 			trial = Trial(os.path.join(root, file))
@@ -41,7 +42,6 @@ def main():
 	db.closeDB()	
 
 
-
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Build a clinical trials database')
 	parser.add_argument('--create-db', dest='createDB', action='store_true', default=False,
@@ -51,8 +51,6 @@ def parseArguments():
 						
 	return parser.parse_args()
 	
-
-
 
 ###
 # DBManager
@@ -101,15 +99,26 @@ class DBManager(object):
 			countryIDs.append(self.cursor.fetchone()[0])
 		
 		# Insert trial
-		self.cursor.execute('INSERT INTO trials (sponsor_id, title, nctID, status, phaseMask) VALUES (?,?,?,?,?)', \
+		self.cursor.execute('INSERT INTO trials (sponsor_id, title, nctID, status, phaseMask, startDate, completionDate, primaryCompletionDate) VALUES (?,?,?,?,?,?,?,?)', \
 							(sponsorID,
 							 trial.title,
 							 trial.id,
 							 trial.recruitment,
-							 trial.phaseMask))
+							 trial.phaseMask,
+							 self.sqlDate(trial.startDate),
+                             self.sqlDate(trial.completionDate),
+                             self.sqlDate(trial.primaryCompletionDate)))
 		
 		# Update link trial with countries
 	
+	def sqlDate(self, date):
+		outDate = 0
+
+		if date is not None:
+			outDate = time.mktime(date.timetuple())
+
+		return outDate
+
 	def insertSponsorClass(self, trial):
 		self.cursor.execute('INSERT OR IGNORE INTO sponsorClasses (class) VALUES(?)', (trial.sponsorClass,))
 		self.cursor.execute('SELECT id FROM sponsorClasses WHERE class = ?', (trial.sponsorClass,))
