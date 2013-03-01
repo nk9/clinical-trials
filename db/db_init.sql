@@ -24,17 +24,24 @@ CREATE TABLE trials (
 	startDate INTEGER,
 	completionDate INTEGER,
 	primaryCompletionDate INTEGER,
-	resultsDate TEXT,
+	resultsDate INTEGER,
 	phaseMask INTEGER,
+	includedInPrayle INTEGER,
 	FOREIGN KEY (sponsor_id) REFERENCES sponsors(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE interventions (
 	id INTEGER PRIMARY KEY,
 	trial_id INTEGER,
-	type TEXT,
-	intervention TEXT,
+	type_id INTEGER,
+	name TEXT,
+	FOREIGN KEY (type_id) REFERENCES interventionTypes(id),
 	FOREIGN KEY (trial_id) REFERENCES trials(id)
+);
+
+CREATE TABLE interventionTypes (
+	id INTEGER PRIMARY KEY,
+	type TEXT UNIQUE
 );
 
 CREATE TABLE trialCountries (

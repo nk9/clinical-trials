@@ -61,14 +61,17 @@ class DBManager(object):
 		self.path = dbPath
 		self.connection = None
 		self.cursor = None
+		self.prayleACTs = None
 		
 		self.openDB()
 	
+
 	def openDB(self):
 		self.connection = sqlite3.connect(self.path)
 		self.cursor = self.connection.cursor()
 		self.cursor.execute('PRAGMA foreign_keys = ON;')
 	
+
 	def initalize(self):
 		SQLInit = open('db/db_init.sql').read()
 		
@@ -76,41 +79,24 @@ class DBManager(object):
 		
 		self.connection.commit()
 	
+
 	def closeDB(self):
 		self.cursor.close()
 	
+
 	def addTrial(self, trial):
-		print trial.id
+		print trial.nctID
 		
-		# Insert the sponsor class
 		sponsorClassID = self.insertSponsorClass(trial)
-		
-		# Insert the sponsor
 		sponsorID = self.insertSponsor(trial, sponsorClassID)
-		
-		print "sponsorClassID = %d; sponsorID = %d" % (sponsorClassID, sponsorID)
-		
-		# Insert countries as appropriate
-		countryIDs = []
-		for country in trial.countries:
-			self.cursor.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
-			self.cursor.execute('SELECT id FROM countries WHERE name = ?', (country,))
-			
-			countryIDs.append(self.cursor.fetchone()[0])
-		
-		# Insert trial
-		self.cursor.execute('INSERT INTO trials (sponsor_id, title, nctID, status, phaseMask, startDate, completionDate, primaryCompletionDate) VALUES (?,?,?,?,?,?,?,?)', \
-							(sponsorID,
-							 trial.title,
-							 trial.id,
-							 trial.recruitment,
-							 trial.phaseMask,
-							 self.sqlDate(trial.startDate),
-                             self.sqlDate(trial.completionDate),
-                             self.sqlDate(trial.primaryCompletionDate)))
-		
-		# Update link trial with countries
+		countryIDs = self.insertCountries(trial)
+
+		trialID = self.insertTrial(trial, sponsorID)
+
+		self.insertTrialCountries(trialID, countryIDs)
+		self.insertInterventions(trial, trialID)
 	
+
 	def sqlDate(self, date):
 		outDate = 0
 
@@ -119,20 +105,81 @@ class DBManager(object):
 
 		return outDate
 
+
 	def insertSponsorClass(self, trial):
 		self.cursor.execute('INSERT OR IGNORE INTO sponsorClasses (class) VALUES(?)', (trial.sponsorClass,))
 		self.cursor.execute('SELECT id FROM sponsorClasses WHERE class = ?', (trial.sponsorClass,))
 		
 		return self.cursor.fetchone()[0]
 	
+
 	def insertSponsor(self, trial, sponsorClassID):
 		self.cursor.execute('INSERT OR IGNORE INTO sponsors (name, class_id) VALUES(?, ?)', (trial.leadSponsor, sponsorClassID))
 		self.cursor.execute('SELECT id FROM sponsors WHERE name = ?', (trial.leadSponsor,))
 		
 		return self.cursor.fetchone()[0]
+
+	def insertCountries(self, trial):
+		countryIDs = []
+
+		for country in trial.countries:
+			self.cursor.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
+			self.cursor.execute('SELECT id FROM countries WHERE name = ?', (country,))
+			
+			countryIDs.append(self.cursor.fetchone()[0])
+
+		return countryIDs
+
+
+	def insertTrial(self, trial, sponsorID):
+		columns = [	'sponsor_id', 'title', 'nctID', 'status', 'phaseMask', 'startDate',
+					'completionDate', 'primaryCompletionDate', 'resultsDate', 'includedInPrayle']
+		sqlString = 'INSERT INTO trials ({0}) VALUES ({1})'.format(','.join(columns), ','.join(['?']*len(columns)))
+
+		self.cursor.execute(sqlString,
+							(sponsorID,
+							 trial.title,
+							 trial.nctID,
+							 trial.recruitment,
+							 trial.phaseMask,
+							 self.sqlDate(trial.startDate),
+                             self.sqlDate(trial.completionDate),
+                             self.sqlDate(trial.primaryCompletionDate),
+                             self.sqlDate(trial.resultsDate),
+                             self.trialIncludedInPrayle(trial)))
+		self.cursor.execute('SELECT id FROM trials WHERE nctID = ?', (trial.nctID,))
+
+		return self.cursor.fetchone()[0]
+
+
+	def insertTrialCountries(self, trialID, countryIDs):
+		for countryID in countryIDs:
+			self.cursor.execute('INSERT INTO trialCountries (trial_id, country_id) VALUES(?,?)', (trialID, countryID))
+
+
+	def insertInterventions(self, trial, trialID):
+		for iDict in trial.interventions:
+			# First, insert the type into the types table
+			self.cursor.execute('INSERT OR IGNORE INTO interventionTypes (type) VALUES(?)', (iDict["type"],))
+			self.cursor.execute('SELECT id FROM interventionTypes WHERE type = ?', (iDict["type"],))
+			typeID = self.cursor.fetchone()[0]
+
+			# Then, add the intervention itself to the interventions table
+			self.cursor.execute('INSERT INTO interventions (trial_id, type_id, name) VALUES(?,?,?)', (trialID, typeID, iDict["name"]))
+
 	
 	def commitTrials(self):
 		self.connection.commit()
+
+
+	def trialIncludedInPrayle(self, trial):
+		if self.prayleACTs is None:
+			self.prayleACTs = [line.strip() for line in open('Prayle ACTs.txt')]
+
+		if trial.nctID in self.prayleACTs:
+			return 1
+		else:
+			return 0
         
 
 
@@ -151,11 +198,11 @@ class Trial(object):
 							 'Phase', 'Countries']
 		
 		# Field variables
-		self.id = os.path.splitext(os.path.basename(path))[0]
+		self.nctID = os.path.splitext(os.path.basename(path))[0]
 		self.leadSponsor = ""
 		self.sponsorClass = ""
 		self.recruitment = ""
-		self.interventions = ""
+		self.interventions = []
 		self.startDate = ''
 		self.completionDate = ''
 		self.primaryCompletionDate = ''
@@ -186,6 +233,11 @@ class Trial(object):
 		for e in etree.findall("location_countries/country"):
 			self.countries.append(e.text)
 
+		for e in etree.findall("intervention"):
+			interventionDict = {'type': e.find("intervention_type").text,
+								'name': e.find("intervention_name").text}
+			self.interventions.append(interventionDict)
+
 		# Dates
 		self.startDate = self.parseDate(etree.find("start_date"))
 		self.completionDate = self.parseDate(etree.find("completion_date"))
@@ -211,7 +263,7 @@ class Trial(object):
 				try:
 					outDate = dt.strptime(stringToParse, '%B %Y').date()
 				except Exception as e:
-					print "Failed parsing date for %s, '%s': %s" % (self.id, stringToParse, e)
+					print "Failed parsing date for %s, '%s': %s" % (self.nctID, stringToParse, e)
 		
 		return outDate
 	
