@@ -7,6 +7,9 @@ import time
 import sqlite3
 
 
+def main():
+	create("trialsDB.sqlite3", "trials_xml")
+
 def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	# Remove the database file if it already exists
 	try:

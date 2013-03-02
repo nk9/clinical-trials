@@ -1,0 +1,14 @@
+[
+	{
+		"name" : "Missing By Sector",
+		"templateFile" : "pie_missing_by_sector.html",
+		"sql" : [
+			"SELECT class, COUNT(class)",
+			"FROM trials, sponsors, sponsorClasses",
+			"WHERE trials.sponsor_id = sponsors.id",
+			"AND sponsors.class_id = sponsorClasses.id",
+			"AND resultsDate = 0",
+			"GROUP BY class;"
+			]
+	}
+]
