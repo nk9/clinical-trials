@@ -7,28 +7,24 @@ import os
 def main():
 	# Handle the arguments
 	args = parseArguments()
-	
-	# Make sure we can create the DB
-	dbPath = "trialsDB.sqlite3"
-	xmlFilesPath = "study_fields_xml"
 
-	if args.createDB:
-		# This is a db population script, so remove the file if it exists
-		try:
-			os.remove(dbPath)
-		except OSError:
-			pass
-		
-		db.create(dbPath, xmlFilesPath, args.startID, args.short)
+	if args.dbPath is not None:
+		if args.xmlFilesPath is None:
+			print "If you're going to create a database, you must pass in the path to the XML files directory"
+			return 0
+		else:
+			db.create(args.dbPath, args.xmlFilesPath, args.startID, args.limit)
 
 
 
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Manage and data mine a clinical trials database')
-	parser.add_argument('--create-db', dest='createDB', action='store_true', default=False,
-						help='create and initalize the DB file')
-	parser.add_argument('--short', dest='short', action='store_true', default=False,
-						help='only parse the first 1000 files')
+	parser.add_argument('--create-db', dest='dbPath',
+						help='create and initalize the DB file using the path provided')
+	parser.add_argument('--xmlFilesPath', dest='xmlFilesPath',
+						help='a directory of trials in ClinicalTrials.gov\'s XML format')
+	parser.add_argument('--limit', dest='limit', type=int,
+						help='set a limit on the number of files from the XML path to be included')
 	parser.add_argument('--startID', dest='startID', help='choose an ID to start from')
 						
 	return parser.parse_args()

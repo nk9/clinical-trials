@@ -7,20 +7,27 @@ import time
 import sqlite3
 
 
-def create(dbPath, xmlFilesPath, startID=None, short=False):
-	# Create the DB
+def create(dbPath, xmlFilesPath, startID=None, limit=0):
+	# Remove the database file if it already exists
+	try:
+		os.remove(dbPath)
+	except OSError:
+		pass
+
+	# Create the database file anew
 	db = DBManager(dbPath)
 	db.initalize()
 
 
 	# Iteration state
 	skipFile = (startID is not None)
-	
+	numberParsed = 0
+
 	# Walk through the xml files and add them to the DB
 	for root, dirs, files in os.walk(xmlFilesPath):
 
-		for index, file in enumerate(files):
-			if index > 10000 and short:
+		for file in files:
+			if limit > 0 and numberParsed > limit:
 				break
 
 			if skipFile and file.startswith(startID):
@@ -31,6 +38,7 @@ def create(dbPath, xmlFilesPath, startID=None, short=False):
 				trial.populate()
 				
 				db.addTrial(trial)
+				numberParsed += 1
 	
 	db.commitTrials()
 	db.closeDB()
