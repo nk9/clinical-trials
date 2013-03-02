@@ -16,16 +16,35 @@ def main():
 	
 	# Make sure we can create the DB
 	dbpath = "db/trialsDB.sqlite3"
-	
-	# This is a db population script, so remove the file if it exists
-	try:
-		os.remove(dbpath)
-	except OSError:
-		pass
 
+	if args.createDB:
+		# This is a db population script, so remove the file if it exists
+		try:
+			os.remove(dbpath)
+		except OSError:
+			pass
+		
+		createDB(dbpath, args)
+
+
+
+def parseArguments():
+	parser = argparse.ArgumentParser(description='Build a clinical trials database')
+	parser.add_argument('--create-db', dest='createDB', action='store_true', default=False,
+						help='create and initalize the DB file')
+	parser.add_argument('--short', dest='short', action='store_true', default=False,
+						help='only parse the first 1000 files')
+	parser.add_argument('--startID', dest='startID', help='choose an ID to start from')
+						
+	return parser.parse_args()
+	
+
+
+def createDB(dbpath, args):
 	# Create the DB
 	db = DBManager(dbpath)
 	db.initalize()
+
 
 	# Iteration state
 	skipFile = (args.startID is not None)
@@ -47,19 +66,9 @@ def main():
 				db.addTrial(trial)
 	
 	db.commitTrials()
-	db.closeDB()	
+	db.closeDB()
 
 
-def parseArguments():
-	parser = argparse.ArgumentParser(description='Build a clinical trials database')
-	parser.add_argument('--create-db', dest='createDB', action='store_true', default=False,
-						help='create and initalize the DB file')
-	parser.add_argument('--short', dest='short', action='store_true', default=False,
-						help='only parse the first 1000 files')
-	parser.add_argument('--startID', dest='startID', help='choose an ID to start from')
-						
-	return parser.parse_args()
-	
 
 ###
 # DBManager
@@ -71,6 +80,7 @@ class DBManager(object):
 		self.connection = None
 		self.cursor = None
 		self.prayleACTs = None
+		self.currentNCTID = ""
 		
 		self.openDB()
 	
@@ -94,7 +104,7 @@ class DBManager(object):
 	
 
 	def addTrial(self, trial):
-		print trial.nctID
+		self.currentNCTID = trial.nctID
 		
 		sponsorClassID = self.insertSponsorClass(trial)
 		sponsorID = self.insertSponsor(trial, sponsorClassID)
@@ -110,7 +120,10 @@ class DBManager(object):
 		outDate = 0
 
 		if date is not None:
-			outDate = time.mktime(date.timetuple())
+			try:
+				outDate = time.mktime(date.timetuple())
+			except Exception as e:
+				print "%s: failed converting date '%s'" % (self.currentNCTID, date)
 
 		return outDate
 
