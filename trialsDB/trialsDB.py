@@ -5,58 +5,25 @@ import os
 from datetime import datetime as dt
 import time
 import sqlite3
-import argparse
 
 
-def main():
-	os.chdir("..")
-
-	# Handle the arguments
-	args = parseArguments()
-	
-	# Make sure we can create the DB
-	dbpath = "db/trialsDB.sqlite3"
-
-	if args.createDB:
-		# This is a db population script, so remove the file if it exists
-		try:
-			os.remove(dbpath)
-		except OSError:
-			pass
-		
-		createDB(dbpath, args)
-
-
-
-def parseArguments():
-	parser = argparse.ArgumentParser(description='Build a clinical trials database')
-	parser.add_argument('--create-db', dest='createDB', action='store_true', default=False,
-						help='create and initalize the DB file')
-	parser.add_argument('--short', dest='short', action='store_true', default=False,
-						help='only parse the first 1000 files')
-	parser.add_argument('--startID', dest='startID', help='choose an ID to start from')
-						
-	return parser.parse_args()
-	
-
-
-def createDB(dbpath, args):
+def create(dbPath, xmlFilesPath, startID=None, short=False):
 	# Create the DB
-	db = DBManager(dbpath)
+	db = DBManager(dbPath)
 	db.initalize()
 
 
 	# Iteration state
-	skipFile = (args.startID is not None)
+	skipFile = (startID is not None)
 	
 	# Walk through the xml files and add them to the DB
-	for root, dirs, files in os.walk("study_fields_xml"):
+	for root, dirs, files in os.walk(xmlFilesPath):
 
 		for index, file in enumerate(files):
-			if index > 10000 and args.short:
+			if index > 10000 and short:
 				break
 
-			if skipFile and file.startswith(args.startID):
+			if skipFile and file.startswith(startID):
 				skipFile = False
 
 			if not skipFile:
@@ -92,7 +59,8 @@ class DBManager(object):
 	
 
 	def initalize(self):
-		SQLInit = open('db/db_init.sql').read()
+		module_dir, module_file = os.path.split(__file__)
+		SQLInit = open(os.path.join(module_dir, 'db_init.sql')).read()
 		
 		self.cursor.executescript(SQLInit)
 		
@@ -196,7 +164,9 @@ class DBManager(object):
 
 	def trialIncludedInPrayle(self, trial):
 		if self.prayleACTs is None:
-			self.prayleACTs = [line.strip() for line in open('Prayle ACTs.txt')]
+			module_dir, module_file = os.path.split(__file__)
+			praylePath = os.path.join(module_dir, 'Prayle2012ACTs.txt')
+			self.prayleACTs = [line.strip() for line in open(praylePath)]
 
 		if trial.nctID in self.prayleACTs:
 			return 1
