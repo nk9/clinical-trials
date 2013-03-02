@@ -22,21 +22,29 @@ def main():
 		os.remove(dbpath)
 	except OSError:
 		pass
-	
+
 	# Create the DB
 	db = DBManager(dbpath)
 	db.initalize()
+
+	# Iteration state
+	skipFile = (args.startID is not None)
 	
 	# Walk through the xml files and add them to the DB
 	for root, dirs, files in os.walk("study_fields_xml"):
+
 		for index, file in enumerate(files):
 			if index > 10000 and args.short:
 				break
-			
-			trial = Trial(os.path.join(root, file))
-			trial.populate()
-			
-			db.addTrial(trial)
+
+			if skipFile and file.startswith(args.startID):
+				skipFile = False
+
+			if not skipFile:
+				trial = Trial(os.path.join(root, file))
+				trial.populate()
+				
+				db.addTrial(trial)
 	
 	db.commitTrials()
 	db.closeDB()	
@@ -48,6 +56,7 @@ def parseArguments():
 						help='create and initalize the DB file')
 	parser.add_argument('--short', dest='short', action='store_true', default=False,
 						help='only parse the first 1000 files')
+	parser.add_argument('--startID', dest='startID', help='choose an ID to start from')
 						
 	return parser.parse_args()
 	
