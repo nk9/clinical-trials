@@ -1,7 +1,8 @@
 [
 	{
+		"id" : "missing_by_sector",
 		"name" : "Missing By Sector",
-		"templateFile" : "pie_missing_by_sector.html",
+		"type" : "pie",
 		"sql" : [
 			"SELECT class, COUNT(class)",
 			"FROM trials, sponsors, sponsorClasses",
@@ -9,6 +10,41 @@
 			"AND sponsors.class_id = sponsorClasses.id",
 			"AND resultsDate = 0",
 			"GROUP BY class;"
-			]
+			],
+		"chartJSON" : {
+			"chart" : {
+                "renderTo": "container",
+                "plotBackgroundColor": null,
+                "plotBorderWidth": null,
+                "plotShadow": false
+            },
+            "title": {
+                "text": "Missing Results by Sector"
+            },
+            "tooltip": {
+                "pointFormat": "{series.name}: <b>{point.percentage}%</b>",
+                "percentageDecimals": 1
+            },
+            "plotOptions": {
+                "pie": {
+                    "allowPointSelect": true,
+                    "cursor": "pointer",
+                    "dataLabels": {
+                        "enabled": false
+                    },
+                    "showInLegend": true
+                }
+            },
+            "series": [{
+                "type": "pie",
+                "name": "Missing results by Sector",
+                "data": [
+                    ["Industry", 0.25],
+                    ["NIH", 0.25],
+                    ["Other", 0.25],
+                    ["U.S. Fed", 0.25]
+                ]
+            }]
+		}
 	}
 ]

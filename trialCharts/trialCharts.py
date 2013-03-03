@@ -4,7 +4,12 @@ import json
 import os
 
 def create(chartsPath):
-	createCharts(chartsPath, loadChartDefs())
+	jsonString = createCharts(loadChartDefs())
+
+	if (len(jsonString)):
+		chartsFile = open(chartsPath, 'w')
+		chartsFile.write(jsonString)
+		chartsFile.close()
 
 
 def loadChartDefs():
@@ -22,26 +27,25 @@ def loadChartDefs():
 
 	return chartDefs
 
-def createCharts(chartsPath, chartDefs):
+def createCharts(chartDefs):
+	JSONCharts = {}
+
 	for chartDef in chartDefs:
 		chart = Chart(chartDef)
-		chart.output(chartsPath)
+		JSONCharts[chart.id] = chart.JSONChart()
 
+	return json.dumps(JSONCharts)
 
 class Chart(object):
 	def __init__(self, definition):
+		self.id = definition["id"]
 		self.sql = definition["sql"]
 		self.name = definition["name"]
-		self.templateFile = definition["templateFile"]
+		self.type = definition["type"]
+		self.chartJSON = definition["chartJSON"]
 
-		self.loadTemplate()
-
-	def loadTemplate(self):
-		module_dir, module_file = os.path.split(__file__)
-		print open(os.path.join(module_dir, 'templates', self.templateFile)).read()
-
-	def output(self, chartsPath):
-		print "=== Write to %s" % (os.path.join(chartsPath, self.templateFile))
+	def JSONChart(self):
+		return self.chartJSON
 
 
 # Default function is main()

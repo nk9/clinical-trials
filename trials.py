@@ -18,7 +18,7 @@ def main():
 			db.create(args.dbPath, args.xmlFilesPath, args.startID, args.limit)
 
 	# Create the charts
-	chartsPath = "web/"
+	chartsPath = "web/js/charts.json"
 	if args.chartsPath is not None:
 		chartsPath = args.chartsPath
 
@@ -34,7 +34,7 @@ def parseArguments():
 	parser.add_argument('--xmlFilesPath', dest='xmlFilesPath',
 						help='a directory of trials in ClinicalTrials.gov\'s XML format')
 	parser.add_argument('--chartsPath', dest='chartsPath',
-						help='choose a destination for the HTML/JS files containing the charts, defaults to "web/"')
+						help='choose a destination for the JSON file describing the charts; defaults to "web/js/charts.json"')
 	parser.add_argument('--limit', dest='limit', type=int,
 						help='set a limit on the number of files from the XML path to be included')
 	parser.add_argument('--startID', dest='startID', help='choose an NCT ID to start from')

@@ -15,7 +15,7 @@
                         plotShadow: false
                     },
                     title: {
-                        text: '%%%TITLE%%%'
+                        text: 'Missing Results by Sector'
                     },
                     tooltip: {
                         pointFormat: '{series.name}: <b>{point.percentage}%</b>',
@@ -33,9 +33,12 @@
                     },
                     series: [{
                         type: 'pie',
-                        name: '%%%TITLE%%%',
+                        name: 'Missing results by Sector',
                         data: [
-                            %%%DATA%%%
+                            ['Industry', 2254/9646],
+                            ['NIH', 3360/9646],
+                            ['Other', 3751/9646],
+                            ['U.S. Fed', 281/9646]
                         ]
                     }]
                 });

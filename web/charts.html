@@ -1,0 +1,30 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>ClinicalTrials.info</title>
+        <script src="js/jquery.min.js"></script>
+        <script src="js/highcharts.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function() { 
+                $.getJSON("js/charts.json", function(data){
+                    window.chartsJSON = data;
+                });
+            });
+        </script>
+        <script type="text/javascript">
+            function rotateChart()
+            {
+                console.log(window.chartsJSON['chartJSON'])
+                var chartDict = window.chartsJSON['chartJSON']
+                var chart1 = new Highcharts.Chart(chartDict);
+            }
+        </script>
+    </head>
+    <body>
+        <form action="#">
+            <input id="rotateButton" type="button" value="click me" onClick="rotateChart();">
+        </form>
+        <div id="container" style="width:100%; height:400px;"></div>
+    </body>
+</html>
