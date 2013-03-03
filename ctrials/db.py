@@ -46,6 +46,9 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	db.commitTrials()
 	db.closeDB()
 
+def foo():
+	print "worked"
+
 
 
 ###

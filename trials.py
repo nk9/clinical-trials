@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 import argparse
-import trialsDB.trialsDB as db
-import trialCharts.trialCharts as charts
+import ctrials.db as db
+import ctrials.charts as charts
 import os
 
 def main():

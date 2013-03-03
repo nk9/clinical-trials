@@ -2,8 +2,10 @@
 
 import json
 import os
+from . import db
 
 def create(chartsPath):
+	db.foo()
 	jsonString = createCharts(loadChartDefs())
 
 	if (len(jsonString)):
@@ -28,13 +30,13 @@ def loadChartDefs():
 	return chartDefs
 
 def createCharts(chartDefs):
-	JSONCharts = {}
+	charts = {}
 
 	for chartDef in chartDefs:
 		chart = Chart(chartDef)
-		JSONCharts[chart.id] = chart.JSONChart()
+		charts[chart.id] = chart.chartDict()
 
-	return json.dumps(JSONCharts)
+	return json.dumps(charts)
 
 class Chart(object):
 	def __init__(self, definition):
@@ -44,8 +46,20 @@ class Chart(object):
 		self.type = definition["type"]
 		self.chartJSON = definition["chartJSON"]
 
-	def JSONChart(self):
-		return self.chartJSON
+	def chartDict(self):
+		chartMethod = getattr(self, self.type + "Chart")
+		return chartMethod()
+
+	def pieChart(self):
+		chartDict = self.chartJSON
+		
+		data = chartDict['series'][0]['data']
+		data[0] = ["Industry", 0.4]
+		data[1] = ["NIH", 0.1]
+
+		chartDict['series'][0]['data'] = data
+
+		return chartDict
 
 
 # Default function is main()
