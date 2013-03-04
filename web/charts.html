@@ -13,18 +13,18 @@
             });
         </script>
         <script type="text/javascript">
-            function rotateChart()
+            function rotateChart(chartID)
             {
-                console.log(window.chartsJSON['chartJSON'])
-                var chartDict = window.chartsJSON['chartJSON']
+                console.log(window.chartsJSON)
+                var chartDict = window.chartsJSON[chartID]
                 var chart1 = new Highcharts.Chart(chartDict);
             }
         </script>
     </head>
     <body>
         <form action="#">
-            <input id="rotateButton" type="button" value="click me" onClick="rotateChart();">
+            <input id="rotateButton" type="button" value="click me" onClick="rotateChart('missing_by_sector');">
         </form>
-        <div id="container" style="width:100%; height:400px;"></div>
+        <div id="container" style="width:400px; height:400px;"></div>
     </body>
 </html>

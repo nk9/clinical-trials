@@ -3,10 +3,11 @@
 import json
 import os
 from . import db
+from . import utils
 
-def create(chartsPath):
-	db.foo()
-	jsonString = createCharts(loadChartDefs())
+
+def create(chartsPath, dbPath):
+	jsonString = createCharts(loadChartDefs(), dbPath)
 
 	if (len(jsonString)):
 		chartsFile = open(chartsPath, 'w')
@@ -15,8 +16,7 @@ def create(chartsPath):
 
 
 def loadChartDefs():
-	module_dir, module_file = os.path.split(__file__)
-	jsonFile = file(os.path.join(module_dir, 'charts.json'))
+	jsonFile = file(utils.relativePath('charts.json'))
 	jsonList = json.load(jsonFile)
 	jsonFile.close()
 
@@ -29,12 +29,14 @@ def loadChartDefs():
 
 	return chartDefs
 
-def createCharts(chartDefs):
+def createCharts(chartDefs, dbPath):
 	charts = {}
 
 	for chartDef in chartDefs:
+		database = db.DBManager(dbPath)
 		chart = Chart(chartDef)
 		charts[chart.id] = chart.chartDict()
+		database.closeDB()
 
 	return json.dumps(charts)
 

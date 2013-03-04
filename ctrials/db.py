@@ -5,6 +5,7 @@ import os
 from datetime import datetime as dt
 import time
 import sqlite3
+from . import utils
 
 
 def main():
@@ -46,8 +47,6 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	db.commitTrials()
 	db.closeDB()
 
-def foo():
-	print "worked"
 
 
 
@@ -73,8 +72,7 @@ class DBManager(object):
 	
 
 	def initalize(self):
-		module_dir, module_file = os.path.split(__file__)
-		SQLInit = open(os.path.join(module_dir, 'db_init.sql')).read()
+		SQLInit = open(utils.relativePath('db_init.sql')).read()
 		
 		self.cursor.executescript(SQLInit)
 		
@@ -178,8 +176,7 @@ class DBManager(object):
 
 	def trialIncludedInPrayle(self, trial):
 		if self.prayleACTs is None:
-			module_dir, module_file = os.path.split(__file__)
-			praylePath = os.path.join(module_dir, 'Prayle2012ACTs.txt')
+			praylePath = utils.relativePath('Prayle2012ACTs.txt')
 			self.prayleACTs = [line.strip() for line in open(praylePath)]
 
 		if trial.nctID in self.prayleACTs:
