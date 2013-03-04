@@ -84,16 +84,17 @@ class DBManager(object):
 	
 
 	def addTrial(self, trial):
-		self.currentNCTID = trial.nctID
-		
-		sponsorClassID = self.insertSponsorClass(trial)
-		sponsorID = self.insertSponsor(trial, sponsorClassID)
-		countryIDs = self.insertCountries(trial)
+		if trial.isComplete():
+			self.currentNCTID = trial.nctID
+			
+			sponsorClassID = self.insertSponsorClass(trial)
+			sponsorID = self.insertSponsor(trial, sponsorClassID)
+			countryIDs = self.insertCountries(trial)
 
-		trialID = self.insertTrial(trial, sponsorID)
+			trialID = self.insertTrial(trial, sponsorID)
 
-		self.insertTrialCountries(trialID, countryIDs)
-		self.insertInterventions(trial, trialID)
+			self.insertTrialCountries(trialID, countryIDs)
+			self.insertInterventions(trial, trialID)
 	
 
 	def sqlDate(self, date):
@@ -101,7 +102,7 @@ class DBManager(object):
 
 		if date is not None:
 			try:
-				outDate = time.mktime(date.timetuple())
+				outDate = time.strftime('%Y-%m-%d %H:%M:%S', date.timetuple())
 			except Exception as e:
 				print "%s: failed converting date '%s'" % (self.currentNCTID, date)
 
@@ -246,6 +247,12 @@ class Trial(object):
 		self.completionDate = self.parseDate(etree.find("completion_date"))
 		self.primaryCompletionDate = self.parseDate(etree.find("primary_completion_date"))
 		self.resultsDate = self.parseDate(etree.find("firstreceived_results_date"))
+
+
+
+	def isComplete(self):
+		"""This will probably contain more checks"""
+		return	self.startDate is not None
 	
 	
 	
