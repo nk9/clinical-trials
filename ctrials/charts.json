@@ -1,8 +1,8 @@
-[
-	{
-		"id" : "missing_by_sector",
+{
+	"missing_by_sector" : {
 		"name" : "Missing By Sector",
 		"type" : "pie",
+        "function" : "pieChart",
 		"sql" : [
 			"SELECT class, COUNT(class)",
 			"FROM trials, sponsors, sponsorClasses",
@@ -22,7 +22,7 @@
                 "text": "Missing Results by Sector"
             },
             "tooltip": {
-                "pointFormat": "{series.name}: <b>{point.percentage}%</b>",
+                "pointFormat": "{series.name}: <b>{point.y}</b> ({point.percentage}%)",
                 "percentageDecimals": 1
             },
             "plotOptions": {
@@ -46,5 +46,87 @@
                 ]
             }]
 		}
-	}
-]
+	},
+    "completed_vs_reported" : {
+        "name" : "All completed trials vs. those which have results by year completed",
+        "type" : "column",
+        "function" : "timeSeriesColumnChart",
+        "sql" : [
+            "SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count",
+            "FROM",
+            "(SELECT strftime('%Y',t.completionDate) AS year, COUNT(t.id) AS count",
+            "FROM trials AS t",
+            "WHERE t.completionDate BETWEEN date('2000-01-01') AND date('now')",
+            "GROUP BY year) AS allTrials",
+            "LEFT JOIN",
+            "(SELECT strftime('%Y', t.completionDate) AS year, COUNT(t.id) as count",
+            "FROM trials AS t",
+            "WHERE t.resultsDate > 0 AND t.completionDate BETWEEN date('2000-01-01') AND date('now')",
+            "GROUP BY year) AS haveResults",
+            "ON allTrials.year = haveResults.year",
+            "GROUP BY allTrials.year;"
+        ],
+        "chartJSON" : {
+            "chart": {
+                "renderTo": "container",
+                "type": "column"
+            },
+            "title": {
+                "text": "Completed trials vs. those with results, by year"
+            },
+            "xAxis": {
+                "categories": ["2000", "2001", "2002", "2003", "2004"],
+                "title": {
+                    "text": null
+                }
+            },
+            "yAxis": {
+                "min": 0,
+                "title": {
+                    "text": "Trial count"
+                },
+                "stackLabels": {
+                    "enabled": true,
+                    "style": {
+                        "fontWeight": "bold",
+                        "color": "(Highcharts.theme && Highcharts.theme.textColor) || 'gray'"
+                    }
+                }
+            },
+            "tooltip": {
+                "pointFormat": "{series.name}: <b>{point.percentage}%</b>",
+                "percentageDecimals": 1
+            },
+            "plotOptions": {
+                "column": {
+                    "stacking": "normal",
+                    "dataLabels": {
+                        "enabled": true,
+                        "color": "(Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white'"
+                    }
+                }
+            },
+            "legend": {
+                "layout": "vertical",
+                "align": "left",
+                "verticalAlign": "top",
+                "x": 100,
+                "y": 100,
+                "floating": true,
+                "borderWidth": 1,
+                "backgroundColor": "#FFFFFF",
+                "shadow": true
+            },
+            "credits": {
+                "enabled": false
+            },
+            "series": [{
+                "name": "Completed, Unreported",
+                "data": [107, 31, 635, 203, 2]
+            }, {
+                "name": "Completed and Reported",
+                "data": [133, 156, 947, 408, 6]
+            }]
+        }
+    }
+}

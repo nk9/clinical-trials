@@ -184,6 +184,11 @@ class DBManager(object):
 			return 1
 		else:
 			return 0
+
+
+	def runQuery(self, sql):
+		self.cursor.execute(sql)
+		return self.cursor.fetchall()
         
 
 

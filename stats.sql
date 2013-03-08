@@ -37,14 +37,17 @@ ON allTrials.type = haveResults.type
 GROUP BY allTrials.type;
 
 
-# List of all trials vs. those which have results by year commenced
-SELECT allTrials.year, allTrials.count, haveResults.count
+# List of all completed trials vs. those which have results by year commenced
+SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count
 FROM
-(SELECT strftime('%Y',trials.startDate) AS year, COUNT(trials.id) AS count FROM trials WHERE trials.completionDate > 0 GROUP BY year) AS allTrials
-LEFT JOIN
-(SELECT strftime('%Y', t.startDate) AS year, COUNT(t.id) as count
+(SELECT strftime('%Y',t.completionDate) AS year, COUNT(t.id) AS count
 FROM trials AS t
-WHERE t.resultsDate > 0
+WHERE t.completionDate BETWEEN date('2000-01-01') AND date('now')
+GROUP BY year) AS allTrials
+LEFT JOIN
+(SELECT strftime('%Y', t.completionDate) AS year, COUNT(t.id) as count
+FROM trials AS t
+WHERE t.resultsDate > 0 AND t.completionDate BETWEEN date('2000-01-01') AND date('now')
 GROUP BY year) AS haveResults
 ON allTrials.year = haveResults.year
 GROUP BY allTrials.year;
