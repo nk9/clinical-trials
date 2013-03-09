@@ -1,56 +1,90 @@
 {
-	"missing_by_sector" : {
-		"name" : "Missing By Sector",
-		"type" : "pie",
-        "function" : "pieChart",
-		"sql" : [
-			"SELECT class, COUNT(class)",
-			"FROM trials, sponsors, sponsorClasses",
-			"WHERE trials.sponsor_id = sponsors.id",
-			"AND sponsors.class_id = sponsorClasses.id",
-			"AND resultsDate = 0",
-			"GROUP BY class;"
-			],
-		"chartJSON" : {
-			"chart" : {
-                "renderTo": "container",
-                "plotBackgroundColor": null,
-                "plotBorderWidth": null,
-                "plotShadow": false
+    "completed_vs_reported" : {
+        "chartJSON" : {
+            "chart" : {
+                "renderTo" : "container",
+                "type" : "column"
             },
-            "title": {
-                "text": "Missing Results by Sector"
+            "credits" : {
+                "enabled" : false
             },
-            "tooltip": {
-                "pointFormat": "{series.name}: <b>{point.y}</b> ({point.percentage}%)",
-                "percentageDecimals": 1
+            "legend" : {
+                "align" : "left",
+                "backgroundColor" : "#FFFFFF",
+                "borderWidth" : 1,
+                "floating" : true,
+                "layout" : "vertical",
+                "shadow" : true,
+                "verticalAlign" : "top",
+                "x" : 100,
+                "y" : 100
             },
-            "plotOptions": {
-                "pie": {
-                    "allowPointSelect": true,
-                    "cursor": "pointer",
-                    "dataLabels": {
-                        "enabled": false
+            "plotOptions" : {
+                "column" : {
+                    "dataLabels" : {
+                        "color" : "(Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white'",
+                        "enabled" : true
                     },
-                    "showInLegend": true
+                    "stacking" : "normal"
                 }
             },
-            "series": [{
-                "type": "pie",
-                "name": "Missing results by Sector",
-                "data": [
-                    ["Industry", 0.25],
-                    ["NIH", 0.25],
-                    ["Other", 0.25],
-                    ["U.S. Fed", 0.25]
-                ]
-            }]
-		}
-	},
-    "completed_vs_reported" : {
-        "name" : "All completed trials vs. those which have results by year completed",
-        "type" : "column",
+            "series" : [
+                {
+                    "data" : [
+                        107,
+                        31,
+                        635,
+                        203,
+                        2
+                    ],
+                    "name" : "Completed, Unreported"
+                },
+                {
+                    "data" : [
+                        133,
+                        156,
+                        947,
+                        408,
+                        6
+                    ],
+                    "name" : "Completed and Reported"
+                }
+            ],
+            "title" : {
+                "text" : "Completed trials vs. those with results, by year"
+            },
+            "tooltip" : {
+                "percentageDecimals" : 1,
+                "pointFormat" : "{series.name}: <b>{point.percentage}%</b>"
+            },
+            "xAxis" : {
+                "categories" : [
+                    "2000",
+                    "2001",
+                    "2002",
+                    "2003",
+                    "2004"
+                ],
+                "title" : {
+                    "text" : null
+                }
+            },
+            "yAxis" : {
+                "min" : 0,
+                "stackLabels" : {
+                    "enabled" : true,
+                    "style" : {
+                        "color" : "(Highcharts.theme && Highcharts.theme.textColor) || 'gray'",
+                        "fontWeight" : "bold"
+                    }
+                },
+                "title" : {
+                    "text" : "Trial count"
+                }
+            }
+        },
         "function" : "timeSeriesColumnChart",
+        "name" : "All completed trials vs. those which have results by year completed",
         "sql" : [
             "SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count",
             "FROM",
@@ -66,67 +100,68 @@
             "ON allTrials.year = haveResults.year",
             "GROUP BY allTrials.year;"
         ],
+        "type" : "column"
+    },
+    "missing_by_sector" : {
         "chartJSON" : {
-            "chart": {
-                "renderTo": "container",
-                "type": "column"
+            "chart" : {
+                "plotBackgroundColor" : null,
+                "plotBorderWidth" : null,
+                "plotShadow" : false,
+                "renderTo" : "container"
             },
-            "title": {
-                "text": "Completed trials vs. those with results, by year"
-            },
-            "xAxis": {
-                "categories": ["2000", "2001", "2002", "2003", "2004"],
-                "title": {
-                    "text": null
+            "plotOptions" : {
+                "pie" : {
+                    "allowPointSelect" : true,
+                    "cursor" : "pointer",
+                    "dataLabels" : {
+                        "enabled" : false
+                    },
+                    "showInLegend" : true
                 }
             },
-            "yAxis": {
-                "min": 0,
-                "title": {
-                    "text": "Trial count"
-                },
-                "stackLabels": {
-                    "enabled": true,
-                    "style": {
-                        "fontWeight": "bold",
-                        "color": "(Highcharts.theme && Highcharts.theme.textColor) || 'gray'"
-                    }
+            "series" : [
+                {
+                    "data" : [
+                        [
+                            "Industry",
+                            0.25
+                        ],
+                        [
+                            "NIH",
+                            0.25
+                        ],
+                        [
+                            "Other",
+                            0.25
+                        ],
+                        [
+                            "U.S. Fed",
+                            0.25
+                        ]
+                    ],
+                    "name" : "Missing results by Sector",
+                    "type" : "pie"
                 }
+            ],
+            "title" : {
+                "text" : "Missing Results by Sector"
             },
-            "tooltip": {
-                "pointFormat": "{series.name}: <b>{point.percentage}%</b>",
-                "percentageDecimals": 1
-            },
-            "plotOptions": {
-                "column": {
-                    "stacking": "normal",
-                    "dataLabels": {
-                        "enabled": true,
-                        "color": "(Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white'"
-                    }
-                }
-            },
-            "legend": {
-                "layout": "vertical",
-                "align": "left",
-                "verticalAlign": "top",
-                "x": 100,
-                "y": 100,
-                "floating": true,
-                "borderWidth": 1,
-                "backgroundColor": "#FFFFFF",
-                "shadow": true
-            },
-            "credits": {
-                "enabled": false
-            },
-            "series": [{
-                "name": "Completed, Unreported",
-                "data": [107, 31, 635, 203, 2]
-            }, {
-                "name": "Completed and Reported",
-                "data": [133, 156, 947, 408, 6]
-            }]
-        }
+            "tooltip" : {
+                "percentageDecimals" : 1,
+                "pointFormat" : "{series.name}: <b>{point.y}</b> ({point.percentage}%)"
+            }
+        },
+        "function" : "pieChart",
+        "name" : "Missing By Sector",
+        "sql" : [
+            "SELECT class, COUNT(class)",
+            "FROM trials, sponsors, sponsorClasses",
+            "WHERE trials.sponsor_id = sponsors.id",
+            "AND sponsors.class_id = sponsorClasses.id",
+            "AND resultsDate = 0",
+            "GROUP BY class;"
+        ],
+        "type" : "pie"
     }
 }

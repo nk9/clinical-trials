@@ -7,6 +7,7 @@ AND resultsDate = 0;
 
 
 # Counts of no-results trials by sponsor class
+# id=missing_by_sector
 SELECT class, COUNT(class)
 FROM trials, sponsors, sponsorClasses
 WHERE trials.sponsor_id = sponsors.id
@@ -38,6 +39,7 @@ GROUP BY allTrials.type;
 
 
 # List of all completed trials vs. those which have results by year commenced
+# id=completed_vs_reported
 SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count
 FROM
 (SELECT strftime('%Y',t.completionDate) AS year, COUNT(t.id) AS count

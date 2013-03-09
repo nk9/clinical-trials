@@ -17,13 +17,13 @@ def create(chartsPath, dbPath):
 
 def loadChartDefs():
 	jsonFile = file(utils.relativePath('charts.json'))
-	jsonList = json.load(jsonFile)
+	jsonDict = json.load(jsonFile)
 	jsonFile.close()
 
 	chartDefs = {}
 
 	# Have to store the SQL as an array so it's legible in the JSON, but the DB expects a string
-	for (chartID, chartDef) in jsonList.iteritems():
+	for (chartID, chartDef) in jsonDict.iteritems():
 		chartDef["sql"] = " ".join(chartDef["sql"])
 		chartDefs[chartID] = chartDef
 
