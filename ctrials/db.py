@@ -22,7 +22,7 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	# Create the database file anew
 	try:
 		db = DBManager(dbPath)
-		db.openDB(initalize=True)
+		db.open(initalize=True)
 	except DBException as e:
 		print e
 		sys.exit(1)
@@ -30,6 +30,8 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	# Iteration state
 	skipFile = (startID is not None)
 	numberParsed = 0
+
+	importer = TrialImporter(db)
 
 	# Walk through the xml files and add them to the DB
 	for root, dirs, files in os.walk(xmlFilesPath):
@@ -45,12 +47,11 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 				trial = Trial(os.path.join(root, file))
 				trial.populate()
 				
-				db.addTrial(trial)
+				importer.addTrial(trial)
 				numberParsed += 1
 	
-	db.commitTrials()
-	db.closeDB()
-
+	importer.commitTrials()
+	db.close()
 
 
 
@@ -71,11 +72,9 @@ class DBManager(object):
 		self.path = dbPath
 		self.connection = None
 		self.cursor = None
-		self.prayleACTs = None
-		self.currentNCTID = ""
 
 
-	def openDB(self, initalize=False):
+	def open(self, initalize=False):
 		self.connection = sqlite3.connect(self.path)
 		self.cursor = self.connection.cursor()
 		self.cursor.execute('PRAGMA foreign_keys = ON;')
@@ -99,11 +98,40 @@ class DBManager(object):
 		self.cursor.executescript(SQLInit)
 		
 		self.connection.commit()
-	
 
-	def closeDB(self):
+
+	def execute(self, *sql):
+		self.cursor.execute(*sql)
+
+
+	def executeAndFetchAll(self, *sql):
+		self.execute(*sql)
+		return self.cursor.fetchall()
+
+
+	def fetchOneFirstCol(self):
+		return self.cursor.fetchone()[0]
+
+
+	def commitContent(self):
+		self.connection.commit()
+
+
+	def close(self):
 		self.cursor.close()
-	
+
+
+
+###
+# TrialImporter
+###
+
+class TrialImporter(object):
+	def __init__(self, dbManager):
+		self.db = dbManager
+		self.prayleACTs = None
+		self.currentNCTID = ""
+
 
 	def addTrial(self, trial):
 		if trial.isComplete():
@@ -132,26 +160,27 @@ class DBManager(object):
 
 
 	def insertSponsorClass(self, trial):
-		self.cursor.execute('INSERT OR IGNORE INTO sponsorClasses (class) VALUES(?)', (trial.sponsorClass,))
-		self.cursor.execute('SELECT id FROM sponsorClasses WHERE class = ?', (trial.sponsorClass,))
+		self.db.execute('INSERT OR IGNORE INTO sponsorClasses (class) VALUES(?)', (trial.sponsorClass,))
+		self.db.execute('SELECT id FROM sponsorClasses WHERE class = ?', (trial.sponsorClass,))
 		
-		return self.cursor.fetchone()[0]
+		return self.db.fetchOneFirstCol()
 	
 
 	def insertSponsor(self, trial, sponsorClassID):
-		self.cursor.execute('INSERT OR IGNORE INTO sponsors (name, class_id) VALUES(?, ?)', (trial.leadSponsor, sponsorClassID))
-		self.cursor.execute('SELECT id FROM sponsors WHERE name = ?', (trial.leadSponsor,))
+		self.db.execute('INSERT OR IGNORE INTO sponsors (name, class_id) VALUES(?, ?)', (trial.leadSponsor, sponsorClassID))
+		self.db.execute('SELECT id FROM sponsors WHERE name = ?', (trial.leadSponsor,))
 		
-		return self.cursor.fetchone()[0]
+		return self.db.fetchOneFirstCol()
+
 
 	def insertCountries(self, trial):
 		countryIDs = []
 
 		for country in trial.countries:
-			self.cursor.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
-			self.cursor.execute('SELECT id FROM countries WHERE name = ?', (country,))
+			self.db.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
+			self.db.execute('SELECT id FROM countries WHERE name = ?', (country,))
 			
-			countryIDs.append(self.cursor.fetchone()[0])
+			countryIDs.append(self.db.cursor.fetchone()[0])
 
 		return countryIDs
 
@@ -161,7 +190,7 @@ class DBManager(object):
 					'completionDate', 'primaryCompletionDate', 'resultsDate', 'includedInPrayle']
 		sqlString = 'INSERT INTO trials ({0}) VALUES ({1})'.format(','.join(columns), ','.join(['?']*len(columns)))
 
-		self.cursor.execute(sqlString,
+		self.db.execute(sqlString,
 							(sponsorID,
 							 trial.title,
 							 trial.nctID,
@@ -172,29 +201,29 @@ class DBManager(object):
                              self.sqlDate(trial.primaryCompletionDate),
                              self.sqlDate(trial.resultsDate),
                              self.trialIncludedInPrayle(trial)))
-		self.cursor.execute('SELECT id FROM trials WHERE nctID = ?', (trial.nctID,))
+		self.db.execute('SELECT id FROM trials WHERE nctID = ?', (trial.nctID,))
 
-		return self.cursor.fetchone()[0]
+		return self.db.fetchOneFirstCol()
 
 
 	def insertTrialCountries(self, trialID, countryIDs):
 		for countryID in countryIDs:
-			self.cursor.execute('INSERT INTO trialCountries (trial_id, country_id) VALUES(?,?)', (trialID, countryID))
+			self.db.execute('INSERT INTO trialCountries (trial_id, country_id) VALUES(?,?)', (trialID, countryID))
 
 
 	def insertInterventions(self, trial, trialID):
 		for iDict in trial.interventions:
 			# First, insert the type into the types table
-			self.cursor.execute('INSERT OR IGNORE INTO interventionTypes (type) VALUES(?)', (iDict["type"],))
-			self.cursor.execute('SELECT id FROM interventionTypes WHERE type = ?', (iDict["type"],))
-			typeID = self.cursor.fetchone()[0]
+			self.db.execute('INSERT OR IGNORE INTO interventionTypes (type) VALUES(?)', (iDict["type"],))
+			self.db.execute('SELECT id FROM interventionTypes WHERE type = ?', (iDict["type"],))
+			typeID = self.db.fetchOneFirstCol()
 
 			# Then, add the intervention itself to the interventions table
-			self.cursor.execute('INSERT INTO interventions (trial_id, type_id, name) VALUES(?,?,?)', (trialID, typeID, iDict["name"]))
+			self.db.execute('INSERT INTO interventions (trial_id, type_id, name) VALUES(?,?,?)', (trialID, typeID, iDict["name"]))
 
 	
 	def commitTrials(self):
-		self.connection.commit()
+		self.db.commitContent()
 
 
 	def trialIncludedInPrayle(self, trial):
@@ -206,11 +235,6 @@ class DBManager(object):
 			return 1
 		else:
 			return 0
-
-
-	def runQuery(self, sql):
-		self.cursor.execute(sql)
-		return self.cursor.fetchall()
         
 
 

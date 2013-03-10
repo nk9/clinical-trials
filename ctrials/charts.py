@@ -35,13 +35,13 @@ def createCharts(chartDefs, dbPath):
 
 	try:
 		database = db.DBManager(dbPath)
-		database.openDB()
+		database.open()
 
 		for (chartID, chartDef) in chartDefs.iteritems():
 			chart = Chart(chartID, chartDef, database)
 			charts[chart.id] = chart.chartDict()
 
-		database.closeDB()
+		database.close()
 	except db.DBException as e:
 		print e
 		sys.exit(1)
@@ -65,7 +65,7 @@ class Chart(object):
 		return chartMethod(data)
 
 	def fetchData(self):
-		return self.db.runQuery(self.sql)
+		return self.db.executeAndFetchAll(self.sql)
 
 	def pieChart(self, data):
 		print data
