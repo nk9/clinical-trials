@@ -2,6 +2,7 @@
 
 import xml.etree.ElementTree as xml
 import os
+import sys
 from datetime import datetime as dt
 import time
 import sqlite3
@@ -21,8 +22,7 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 	# Create the database file anew
 	try:
 		db = DBManager(dbPath)
-		db.openDB()
-		db.initalize()
+		db.openDB(initalize=True)
 	except DBException as e:
 		print e
 		sys.exit(1)
@@ -75,23 +75,27 @@ class DBManager(object):
 		self.currentNCTID = ""
 
 
-	def openDB(self):
+	def openDB(self, initalize=False):
 		self.connection = sqlite3.connect(self.path)
 		self.cursor = self.connection.cursor()
 		self.cursor.execute('PRAGMA foreign_keys = ON;')
 
-		# Check the database's version
-		self.cursor.execute('PRAGMA user_version;')
-		version = self.cursor.fetchone()[0]
+		if initalize:
+			self.initalize()
+		else:
+			# Check the database's version
+			self.cursor.execute('PRAGMA user_version;')
+			version = self.cursor.fetchone()[0]
 
-		if version != self.user_version:
-			raise DBException("Error opening database file: versions don't match",
-							  {'script version' : self.user_version, 'database version' : version })
+			if version != self.user_version:
+				raise DBException("Error opening database file: versions don't match",
+								  {'script version' : self.user_version, 'database version' : version })
 	
 
 	def initalize(self):
 		SQLInit = open(utils.relativePath('db_init.sql')).read()
 		
+		self.cursor.execute('PRAGMA user_version = %d;' % self.user_version)
 		self.cursor.executescript(SQLInit)
 		
 		self.connection.commit()
