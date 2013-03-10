@@ -19,9 +19,13 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 		pass
 
 	# Create the database file anew
-	db = DBManager(dbPath)
-	db.initalize()
-
+	try:
+		db = DBManager(dbPath)
+		db.openDB()
+		db.initalize()
+	except DBException as e:
+		print e
+		sys.exit(1)
 
 	# Iteration state
 	skipFile = (startID is not None)
@@ -54,21 +58,35 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 # DBManager
 ###
 
+class DBException(Exception):
+	pass
+
 class DBManager(object):
 	def __init__(self, dbPath):
+		####
+		# Current user_version of the SQL database
+		####
+		self.user_version = 1
+
 		self.path = dbPath
 		self.connection = None
 		self.cursor = None
 		self.prayleACTs = None
 		self.currentNCTID = ""
-		
-		self.openDB()
-	
+
 
 	def openDB(self):
 		self.connection = sqlite3.connect(self.path)
 		self.cursor = self.connection.cursor()
 		self.cursor.execute('PRAGMA foreign_keys = ON;')
+
+		# Check the database's version
+		self.cursor.execute('PRAGMA user_version;')
+		version = self.cursor.fetchone()[0]
+
+		if version != self.user_version:
+			raise DBException("Error opening database file: versions don't match",
+							  {'script version' : self.user_version, 'database version' : version })
 	
 
 	def initalize(self):

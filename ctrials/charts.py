@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from . import db
 from . import utils
 
@@ -32,11 +33,18 @@ def loadChartDefs():
 def createCharts(chartDefs, dbPath):
 	charts = {}
 
-	for (chartID, chartDef) in chartDefs.iteritems():
+	try:
 		database = db.DBManager(dbPath)
-		chart = Chart(chartID, chartDef, database)
-		charts[chart.id] = chart.chartDict()
+		database.openDB()
+
+		for (chartID, chartDef) in chartDefs.iteritems():
+			chart = Chart(chartID, chartDef, database)
+			charts[chart.id] = chart.chartDict()
+
 		database.closeDB()
+	except db.DBException as e:
+		print e
+		sys.exit(1)
 
 	return json.dumps(charts)
 
