@@ -68,30 +68,23 @@ class Chart(object):
 		return self.db.executeAndFetchAll(self.sql)
 
 	def pieChart(self, data):
-		print data
 		chartDict = self.chartJSON
 
-		# chartDict['series'][0]['data'] = chartData
 		chartDict['series'][0]['data'] = data
 
 		return chartDict
 
-	def timeSeriesColumnChart(self, data):
+	def columnChart(self, data):
 		chartDict = self.chartJSON
-		print data
-		years = []
-		completedUnreported = []
-		reported = []
 
-		# Split out the data as it's needed by the charts API
-		for t in data:
-			years.append(t[0])
-			completedUnreported.append(t[1])
-			reported.append(t[2])
+		columns = zip(*data)
 
-		chartDict['xAxis']['categories'] = years
-		chartDict['series'][0]['data'] = completedUnreported
-		chartDict['series'][1]['data'] = reported
+		# First, labels
+		chartDict['xAxis']['categories'] = columns[0]
+
+		# Second, all the data
+		for (index, col) in enumerate(columns[1:]):
+			chartDict['series'][index]['data'] = col
 
 		return chartDict
 

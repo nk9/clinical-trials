@@ -6,6 +6,9 @@ import sys
 from datetime import datetime as dt
 import time
 import sqlite3
+import json
+import re
+
 from . import utils
 
 
@@ -67,7 +70,7 @@ class DBManager(object):
 		####
 		# Current user_version of the SQL database
 		####
-		self.user_version = 1
+		self.user_version = 2
 
 		self.path = dbPath
 		self.connection = None
@@ -131,6 +134,11 @@ class TrialImporter(object):
 		self.db = dbManager
 		self.prayleACTs = None
 		self.currentNCTID = ""
+		self.parensRE = re.compile(".*\(([^\)]+)\).*")
+
+		shortNamesFile = open(utils.relativePath('sponsorShortNames.json'))
+		self.sponsorShortNames = json.load(shortNamesFile)
+		shortNamesFile.close()
 
 
 	def addTrial(self, trial):
@@ -167,8 +175,21 @@ class TrialImporter(object):
 	
 
 	def insertSponsor(self, trial, sponsorClassID):
-		self.db.execute('INSERT OR IGNORE INTO sponsors (name, class_id) VALUES(?, ?)', (trial.leadSponsor, sponsorClassID))
-		self.db.execute('SELECT id FROM sponsors WHERE name = ?', (trial.leadSponsor,))
+		name = trial.leadSponsor
+		shortName = None
+
+		if name in self.sponsorShortNames:
+			shortName = self.sponsorShortNames[name]
+
+		# Pull out the shortname if needed, and if available
+		if shortName is None and "(" in name:
+			m = self.parensRE.match(name)
+
+			if m:
+				shortName = m.groups()[0]
+
+		self.db.execute('INSERT OR IGNORE INTO sponsors (name, shortName, class_id) VALUES(?,?,?)', (name, shortName, sponsorClassID))
+		self.db.execute('SELECT id FROM sponsors WHERE name = ?', (name,))
 		
 		return self.db.fetchOneFirstCol()
 

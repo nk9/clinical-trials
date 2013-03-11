@@ -1,4 +1,80 @@
 {
+    "10_most_unreporting_sponsors" : {
+        "chartJSON" : {
+            "chart" : {
+                "renderTo" : "container",
+                "type" : "column"
+            },
+            "credits" : {
+                "enabled" : false
+            },
+            "legend" : {
+                "enabled" : false
+            },
+            "plotOptions" : {
+                "column" : {
+                    "stacking" : "normal"
+                }
+            },
+            "series" : [
+                {
+                    "data" : [
+                        107,
+                        31,
+                        635,
+                        203,
+                        2
+                    ],
+                    "name" : "Completed Trials Missing Results"
+                }
+            ],
+            "title" : {
+                "text" : "Ten Most Unreporting Sponsors"
+            },
+            "xAxis" : {
+                "categories" : [
+                    "ABC Corp",
+                    "NIMH"
+                ],
+                "labels" : {
+                    "style" : {
+                        "height" : "12px",
+                        "text-overflow" : "ellipsis",
+                        "width" : "50px"
+                    }
+                },
+                "title" : {
+                    "text" : null
+                }
+            },
+            "yAxis" : {
+                "min" : 0,
+                "stackLabels" : {
+                    "enabled" : true,
+                    "style" : {
+                        "color" : "(Highcharts.theme && Highcharts.theme.textColor) || 'gray'",
+                        "fontWeight" : "bold"
+                    }
+                },
+                "title" : {
+                    "text" : "Trial count"
+                }
+            }
+        },
+        "function" : "columnChart",
+        "name" : "Ten sponsors with the most missing results",
+        "sql" : [
+            "SELECT ifnull(s.shortName, s.name), COUNT(t.id) as count",
+            "FROM trials AS t, sponsors AS s",
+            "WHERE s.id = t.sponsor_id",
+            "AND t.resultsDate = 0",
+            "AND t.completionDate BETWEEN date('2000-01-01') AND date('now')",
+            "GROUP BY sponsor_id",
+            "ORDER BY count DESC",
+            "LIMIT 10;"
+        ],
+        "type" : "column"
+    },
     "completed_vs_reported" : {
         "chartJSON" : {
             "chart" : {
@@ -83,7 +159,7 @@
                 }
             }
         },
-        "function" : "timeSeriesColumnChart",
+        "function" : "columnChart",
         "name" : "All completed trials vs. those which have results by year completed",
         "sql" : [
             "SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count",

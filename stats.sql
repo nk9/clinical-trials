@@ -55,3 +55,13 @@ ON allTrials.year = haveResults.year
 GROUP BY allTrials.year;
 
 
+# List of sponsors with most outstanding results
+# id=10_most_unreporting_sponsors
+SELECT ifnull(s.shortName, s.name), COUNT(t.id) as count
+FROM trials AS t, sponsors AS s
+WHERE s.id = t.sponsor_id
+AND t.resultsDate = 0
+AND t.completionDate BETWEEN date('2000-01-01') AND date('now')
+GROUP BY sponsor_id
+ORDER BY count DESC
+LIMIT 10;

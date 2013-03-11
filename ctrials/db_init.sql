@@ -11,6 +11,7 @@ CREATE TABLE sponsorClasses (
 CREATE TABLE sponsors (
 	id INTEGER PRIMARY KEY,
 	name TEXT UNIQUE,
+	shortName TEXT,
 	class_id INTEGER,
 	FOREIGN KEY (class_id) REFERENCES sponsorClasses(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
