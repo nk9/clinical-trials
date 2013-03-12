@@ -9,10 +9,11 @@ AND resultsDate = 0;
 # Counts of no-results trials by sponsor class
 # id=missing_by_sector
 SELECT class, COUNT(class)
-FROM trials, sponsors, sponsorClasses
-WHERE trials.sponsor_id = sponsors.id
+FROM trials AS t, sponsors, sponsorClasses
+WHERE t.sponsor_id = sponsors.id
 AND sponsors.class_id = sponsorClasses.id
 AND resultsDate = 0
+AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY class;
 
 
@@ -44,12 +45,12 @@ SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count
 FROM
 (SELECT strftime('%Y',t.completionDate) AS year, COUNT(t.id) AS count
 FROM trials AS t
-WHERE t.completionDate BETWEEN date('2000-01-01') AND date('now')
+WHERE t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY year) AS allTrials
 LEFT JOIN
 (SELECT strftime('%Y', t.completionDate) AS year, COUNT(t.id) as count
 FROM trials AS t
-WHERE t.resultsDate > 0 AND t.completionDate BETWEEN date('2000-01-01') AND date('now')
+WHERE t.resultsDate > 0 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY year) AS haveResults
 ON allTrials.year = haveResults.year
 GROUP BY allTrials.year;
@@ -61,7 +62,7 @@ SELECT ifnull(s.shortName, s.name), COUNT(t.id) as count
 FROM trials AS t, sponsors AS s
 WHERE s.id = t.sponsor_id
 AND t.resultsDate = 0
-AND t.completionDate BETWEEN date('2000-01-01') AND date('now')
+AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY sponsor_id
 ORDER BY count DESC
 LIMIT 10;
