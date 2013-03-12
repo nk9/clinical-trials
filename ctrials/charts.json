@@ -127,7 +127,7 @@
                 }
             ],
             "title" : {
-                "text" : "Completed trials vs. those with results, by year"
+                "text" : "Completed trials vs. those with results, by year completed"
             },
             "tooltip" : {
                 "percentageDecimals" : 1,
@@ -177,6 +177,68 @@
             "GROUP BY allTrials.year;"
         ],
         "type" : "column"
+    },
+    "missing_by_phase" : {
+        "chartJSON" : {
+            "chart" : {
+                "plotBackgroundColor" : null,
+                "plotBorderWidth" : null,
+                "plotShadow" : false,
+                "renderTo" : "container"
+            },
+            "plotOptions" : {
+                "pie" : {
+                    "allowPointSelect" : true,
+                    "cursor" : "pointer",
+                    "dataLabels" : {
+                        "enabled" : false
+                    },
+                    "showInLegend" : true
+                }
+            },
+            "series" : [
+                {
+                    "data" : [
+                        [
+                            "Industry",
+                            0.25
+                        ],
+                        [
+                            "NIH",
+                            0.25
+                        ],
+                        [
+                            "Other",
+                            0.25
+                        ],
+                        [
+                            "U.S. Fed",
+                            0.25
+                        ]
+                    ],
+                    "name" : "Missing results by Phase",
+                    "type" : "pie"
+                }
+            ],
+            "title" : {
+                "text" : "Missing Results by Phase"
+            },
+            "tooltip" : {
+                "percentageDecimals" : 1,
+                "pointFormat" : "{series.name}: <b>{point.y}</b> ({point.percentage}%)"
+            }
+        },
+        "function" : "phaseChart",
+        "name" : "Missing By Phase",
+        "sql" : [
+            "SELECT t.phaseMask, COUNT(t.id) as count",
+            "FROM trials as t",
+            "WHERE t.resultsDate = 0",
+            "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
+            "GROUP BY t.phaseMask",
+            "ORDER BY t.phaseMask;"
+        ],
+        "type" : "pie"
     },
     "missing_by_sector" : {
         "chartJSON" : {

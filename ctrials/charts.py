@@ -62,6 +62,7 @@ class Chart(object):
 	def chartDict(self):
 		chartMethod = getattr(self, self.function)
 		data = self.fetchData()
+		print data
 		return chartMethod(data)
 
 	def fetchData(self):
@@ -73,6 +74,20 @@ class Chart(object):
 		chartDict['series'][0]['data'] = data
 
 		return chartDict
+
+	def phaseChart(self, data):
+		chartDict = self.chartJSON
+		newData = []
+
+		phases = {0 : 'None', 1 : '0', 2 : 'I', 4 : 'II', 6 : 'I/II', 8 : 'III', 12 : 'II/III', 16 : 'IV'}
+
+		for (phase, count) in data:
+			newData.append([phases[phase], count])
+
+		chartDict['series'][0]['data'] = newData
+
+		return chartDict
+
 
 	def columnChart(self, data):
 		chartDict = self.chartJSON

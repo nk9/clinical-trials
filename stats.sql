@@ -39,7 +39,7 @@ ON allTrials.type = haveResults.type
 GROUP BY allTrials.type;
 
 
-# List of all completed trials vs. those which have results by year commenced
+# List of all completed trials vs. those which have results by year completed
 # id=completed_vs_reported
 SELECT allTrials.year, allTrials.count-haveResults.count, haveResults.count
 FROM
@@ -66,3 +66,13 @@ AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY sponsor_id
 ORDER BY count DESC
 LIMIT 10;
+
+
+# Missing results by study phase
+# id=missing_by_phase
+SELECT t.phaseMask, COUNT(t.id) as count
+FROM trials as t
+WHERE t.resultsDate = 0
+AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
+GROUP BY t.phaseMask
+ORDER BY t.phaseMask;
