@@ -25,9 +25,23 @@
                         203,
                         2
                     ],
+                    "name" : "Completed Trials With Results"
+                },
+                {
+                    "data" : [
+                        107,
+                        31,
+                        635,
+                        203,
+                        2
+                    ],
                     "name" : "Completed Trials Missing Results"
                 }
             ],
+            "tooltip" : {
+                "percentageDecimals" : 1,
+                "pointFormat" : "{series.name}: <b>{point.y}</b> ({point.percentage}%)"
+            },
             "title" : {
                 "text" : "Ten Most Unreporting Sponsors"
             },
@@ -64,13 +78,24 @@
         "function" : "columnChart",
         "name" : "Ten sponsors with the most missing results",
         "sql" : [
-            "SELECT ifnull(s.shortName, s.name), COUNT(t.id) as count",
+            "SELECT noResults.sponsorName, haveResults.count, noResults.count",
+            "FROM",
+            "(SELECT s.id AS sponsor, ifnull(s.shortName, s.name) as sponsorName, COUNT(t.id) AS count",
             "FROM trials AS t, sponsors AS s",
             "WHERE s.id = t.sponsor_id",
             "AND t.resultsDate = 0",
             "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
             "GROUP BY sponsor_id",
-            "ORDER BY count DESC",
+            "ORDER BY count DESC) AS noResults",
+            "LEFT JOIN",
+            "(SELECT s.id AS sponsor, COUNT(t.id) AS count",
+            "FROM trials as t, sponsors AS s",
+            "WHERE s.id = t.sponsor_id",
+            "AND t.resultsDate > 0",
+            "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
+            "GROUP BY sponsor_id",
+            "ORDER BY count DESC) AS haveResults",
+            "ON noResults.sponsor = haveResults.sponsor",
             "LIMIT 10;"
         ],
         "type" : "column"

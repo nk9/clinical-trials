@@ -58,13 +58,24 @@ GROUP BY allTrials.year;
 
 # List of sponsors with most outstanding results
 # id=10_most_unreporting_sponsors
-SELECT ifnull(s.shortName, s.name), COUNT(t.id) as count
+SELECT noResults.sponsorName, haveResults.count, noResults.count
+FROM
+(SELECT s.id AS sponsor, ifnull(s.shortName, s.name) as sponsorName, COUNT(t.id) AS count
 FROM trials AS t, sponsors AS s
 WHERE s.id = t.sponsor_id
 AND t.resultsDate = 0
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY sponsor_id
-ORDER BY count DESC
+ORDER BY count DESC) AS noResults
+LEFT JOIN
+(SELECT s.id AS sponsor, COUNT(t.id) AS count
+FROM trials as t, sponsors AS s
+WHERE s.id = t.sponsor_id
+AND t.resultsDate > 0
+AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
+GROUP BY sponsor_id
+ORDER BY count DESC) AS haveResults
+ON noResults.sponsor = haveResults.sponsor
 LIMIT 10;
 
 
