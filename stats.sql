@@ -87,3 +87,34 @@ WHERE t.resultsDate = 0
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY t.phaseMask
 ORDER BY t.phaseMask;
+
+
+# Prayle studies breakdown, by sponsor class
+# id=prayle_then_and_now
+SELECT a.class, a.count, b.count, c.count
+FROM
+(SELECT COUNT(t.id) AS count, sc.class AS class
+FROM trials AS t, sponsors AS s, sponsorClasses AS sc
+WHERE s.id = t.sponsor_id
+AND s.class_id = sc.id
+AND t.includedInPrayle = 1
+AND t.resultsDate BETWEEN date('2009-01-01') AND date('2011-01-18')
+GROUP BY sc.id) AS a
+LEFT JOIN
+(SELECT COUNT(t.id) AS count, sc.class AS class
+FROM trials AS t, sponsors AS s, sponsorClasses AS sc
+WHERE s.id = t.sponsor_id
+AND s.class_id = sc.id
+AND t.includedInPrayle = 1
+AND t.resultsDate BETWEEN date('2011-01-18') AND date('now')
+GROUP BY sc.id) AS b
+ON a.class = b.class
+LEFT JOIN
+(SELECT COUNT(t.id) AS count, sc.class AS class
+FROM trials AS t, sponsors AS s, sponsorClasses AS sc
+WHERE s.id = t.sponsor_id
+AND s.class_id = sc.id
+AND t.includedInPrayle = 1
+AND t.resultsDate = 0
+GROUP BY sc.id) AS c
+ON a.class = c.class;

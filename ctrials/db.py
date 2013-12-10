@@ -1,15 +1,17 @@
 #!/usr/bin/python
 
 import xml.etree.ElementTree as xml
-import os
-import sys
 from datetime import datetime as dt
-import time
+import os, sys, time, re
 import sqlite3
 import json
-import re
 
 from . import utils
+from model import *
+
+#SQLAlchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 def main():
@@ -31,30 +33,31 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 		sys.exit(1)
 
 	# Iteration state
-	skipFile = (startID is not None)
-	numberParsed = 0
+	# skipFile = (startID is not None)
+	# numberParsed = 0
 
-	importer = TrialImporter(db)
+	# importer = TrialImporter(db)
 
-	# Walk through the xml files and add them to the DB
-	for root, dirs, files in os.walk(xmlFilesPath):
+	# # Walk through the xml files and add them to the DB
+	# for root, dirs, files in os.walk(xmlFilesPath):
 
-		for file in files:
-			if limit > 0 and numberParsed > limit:
-				break
+	# 	for filename in files:
+	# 		if limit > 0 and numberParsed > limit:
+	# 			break
 
-			if skipFile and file.startswith(startID):
-				skipFile = False
+	# 		if skipFile and file.startswith(startID):
+	# 			skipFile = False
 
-			if not skipFile:
-				trial = Trial(os.path.join(root, file))
-				trial.populate()
+	# 		if not skipFile:
+	# 			trial = XMLTrial(os.path.join(root, filename))
+	# 			trial.populate()
 				
-				importer.addTrial(trial)
-				numberParsed += 1
+	# 			importer.addTrial(trial)
+	# 			numberParsed += 1
 	
-	importer.commitTrials()
+	# importer.commitTrials()
 	db.close()
+
 
 
 
@@ -70,64 +73,101 @@ class DBManager(object):
 		####
 		# Current user_version of the SQL database
 		####
-		self.user_version = 2
+		self.user_version = 3
 
 		self.path = dbPath
-		self.connection = None
-		self.cursor = None
+		# self.connection = None
+		# self.cursor = None
+
+		self.engine = None
+		self.session = None
 
 
 	def open(self, initalize=False):
-		self.connection = sqlite3.connect(self.path)
-		self.cursor = self.connection.cursor()
-		self.cursor.execute('PRAGMA foreign_keys = ON;')
+		URL = 'sqlite:///%s' % self.path
+		self.engine = create_engine(URL, echo=True)
+		sessionMaker = sessionmaker(bind=self.engine)
+		self.session = sessionMaker()
 
-		if initalize:
-			self.initalize()
-		else:
-			# Check the database's version
-			self.cursor.execute('PRAGMA user_version;')
-			version = self.cursor.fetchone()[0]
+		# self.Base = declarative_base(cls=Base)
+		# importer = NewImporter(self.engine, BaseClass)
 
-			if version != self.user_version:
-				raise DBException("Error opening database file: versions don't match",
-								  {'script version' : self.user_version, 'database version' : version })
+		# self.connection = sqlite3.connect(self.path)
+		# self.cursor = self.connection.cursor()
+		# self.cursor.execute('PRAGMA foreign_keys = ON;')
+
+		# if initalize:
+		self.initalize()
+
+		self.testCreation()	
+
+		# else:
+		# 	# Check the database's version
+		# 	self.cursor.execute('PRAGMA user_version;')
+		# 	version = self.cursor.fetchone()[0]
+
+		# 	if version != self.user_version:
+		# 		raise DBException("Error opening database file: versions don't match",
+		# 						  {'script version' : self.user_version, 'database version' : version })
 	
 
 	def initalize(self):
-		SQLInit = open(utils.relativePath('db_init.sql')).read()
+		# SQLInit = open(utils.relativePath('db_init.sql')).read()
 		
-		self.cursor.execute('PRAGMA user_version = %d;' % self.user_version)
-		self.cursor.executescript(SQLInit)
+		# self.cursor.execute('PRAGMA user_version = %d;' % self.user_version)
+		# self.cursor.executescript(SQLInit)
 		
-		self.connection.commit()
+		# self.connection.commit()
+		Base.metadata.create_all(self.engine)
+
+
+	def testCreation(self):
+		newTrial = Trial("NCT00000102", "Congenital Adrenal Hyperplasia: Calcium Channels as Therapeutic Targets")
+		print repr(newTrial)
+		self.session.add(newTrial)
+		self.commitContent()
 
 
 	def execute(self, *sql):
-		self.cursor.execute(*sql)
+		pass
+		# self.cursor.execute(*sql)
 
 
 	def executeAndFetchAll(self, *sql):
-		self.execute(*sql)
-		return self.cursor.fetchall()
+		pass
+		# self.execute(*sql)
+		# return self.cursor.fetchall()
 
 
 	def fetchOneFirstCol(self):
-		return self.cursor.fetchone()[0]
+		pass
+		# return self.cursor.fetchone()[0]
 
 
 	def commitContent(self):
-		self.connection.commit()
+		pass
+		# self.connection.commit()
+		self.session.commit()
 
 
 	def close(self):
-		self.cursor.close()
+		self.session.close()
+		# self.cursor.close()
+
+
+
+
+
 
 
 
 ###
 # TrialImporter
 ###
+
+class NewImporter(object):
+	def __init__(self, dbManager):
+		print "Created NewImporter"
 
 class TrialImporter(object):
 	def __init__(self, dbManager):
@@ -218,10 +258,10 @@ class TrialImporter(object):
 							 trial.recruitment,
 							 trial.phaseMask,
 							 self.sqlDate(trial.startDate),
-                             self.sqlDate(trial.completionDate),
-                             self.sqlDate(trial.primaryCompletionDate),
-                             self.sqlDate(trial.resultsDate),
-                             self.trialIncludedInPrayle(trial)))
+							 self.sqlDate(trial.completionDate),
+							 self.sqlDate(trial.primaryCompletionDate),
+							 self.sqlDate(trial.resultsDate),
+							 self.trialIncludedInPrayle(trial)))
 		self.db.execute('SELECT id FROM trials WHERE nctID = ?', (trial.nctID,))
 
 		return self.db.fetchOneFirstCol()
@@ -256,14 +296,14 @@ class TrialImporter(object):
 			return 1
 		else:
 			return 0
-        
+		
 
 
 ###
-# Trial
+# XMLTrial
 ###
 
-class Trial(object):
+class XMLTrial(object):
 	def __init__(self, path):
 		self.path = path
 		self.fields = []
@@ -365,7 +405,7 @@ class Trial(object):
 		
 		return outMask
 	
-                
+				
 # Default function is main()
 if __name__ == '__main__':
-    main()
+	main()

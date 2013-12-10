@@ -19,11 +19,11 @@ def main():
 			dbPath =  db.create(args.dbPath, args.xmlFilesPath, args.startID, args.limit)
 
 	# Create the charts
-	chartsPath = "web/js/charts.json"
-	if args.chartsPath is not None:
-		chartsPath = args.chartsPath
+	# chartsPath = "web/js/charts.json"
+	# if args.chartsPath is not None:
+	# 	chartsPath = args.chartsPath
 
-	charts.create(chartsPath, args.dbPath)
+	# charts.create(chartsPath, args.dbPath)
 
 
 
