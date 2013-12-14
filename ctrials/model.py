@@ -1,7 +1,8 @@
 #!/usr/bin/python
 #from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Table, Column, Integer, String, Boolean, ForeignKey
 
 ###
 # Model classes
@@ -9,7 +10,7 @@ from sqlalchemy import Column, Integer, String
 
 Base = declarative_base()
 
-class MyMixin(object):
+class CTrialsModelMixin(object):
 	# @declared_attr
 	# def __tablename__(cls):
 	# 	return cls.__name__.lower()
@@ -25,38 +26,96 @@ class MyMixin(object):
 
 			if len(valuesString):
 				valuesString += ", "
-				
+
 			valuesString += '"%s"' % v
 
 		return "<%s(%s)>" % (type(self), valuesString)
 
 
-class Trial(Base, MyMixin):
-	__tablename__ = 'trials'
+class InterventionType(Base, CTrialsModelMixin):
+	__tablename__ = 'interventionTypes'
 
-	nctID = Column(String)
-	title = Column(String)
+	itype = Column('type', String, unique=True)
 
-	def __init__(self, nctID, title):
-		self.nctID = nctID
-		self.title = title
-
-	# def __repr__(self):
-	# 	return "<Trial('%s', '%s')>" % (self.nctID, self.title)
+	def __init__(self, itype):
+		self.itype = itype
 
 
-class Country(Base, MyMixin):
-	__tablename__ = 'countries'
+class Intervention(Base, CTrialsModelMixin):
+	__tablename__ = 'interventions'
 
+	trial_id = Column(Integer, ForeignKey("trials.id"))
+	type_id = Column(Integer, ForeignKey("interventionTypes.id"))
 	name = Column(String)
+
+	itype = relationship("InterventionType")
 
 	def __init__(self, name):
 		self.name = name
 
 
-# class InterventionType(Base, MyMixin):
-# 	__tablename__ = 'interventionTypes'
+class SponsorClass(Base, CTrialsModelMixin):
+	__tablename__ = 'sponsorClasses'
 
-# 	type = Column(String)
+	sclass = Column('class', String, unique=True)
 
-# 	def
+	def __init__(self, sclass):
+		self.sclass = sclass
+
+
+class Sponsor(Base, CTrialsModelMixin):
+	__tablename__ = 'sponsors'
+
+	sclass_id = Column('class_id', Integer, ForeignKey("sponsorClasses.id"))
+	name = Column(String, unique=True)
+	shortName = Column(String)
+
+	sclass = relationship("SponsorClass")
+
+	def __init__(self, name, shortName):
+		self.name = name
+		self.shortName = shortName
+
+
+trial_countries = Table('trialCountries', Base.metadata,
+	Column('trial_id', Integer, ForeignKey("trials.id")),
+	Column('country_id', Integer, ForeignKey("countries.id"))
+	)
+
+
+class Trial(Base, CTrialsModelMixin):
+	__tablename__ = 'trials'
+
+	nctID = Column(String)
+	title = Column(String)
+	status = Column(String)
+	startDate = Column(String)
+	completionDate = Column(String)
+	primaryCompletionDate = Column(String)
+	resultsDate = Column(String)
+	phaseMask = Column(Integer)
+	includedInPrayle = Column(Boolean)
+
+	# Foreign Keys
+	countries = relationship('Country', secondary=trial_countries, backref='trials')
+
+	sponsor_id = Column(Integer, ForeignKey("sponsors.id"))
+	sponsor = relationship('Sponsor')
+
+	interventions = relationship('Intervention')
+
+	def __init__(self, nctID, title):
+		self.nctID = nctID
+		self.title = title
+
+
+
+class Country(Base, CTrialsModelMixin):
+	__tablename__ = 'countries'
+
+	name = Column(String, unique=True, nullable=False)
+
+	def __init__(self, name):
+		self.name = name
+
+

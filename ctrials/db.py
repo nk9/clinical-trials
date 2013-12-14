@@ -12,6 +12,7 @@ from model import *
 #SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.expression import ClauseElement
 
 
 def main():
@@ -33,29 +34,29 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 		sys.exit(1)
 
 	# Iteration state
-	# skipFile = (startID is not None)
-	# numberParsed = 0
+	skipFile = (startID is not None)
+	numberParsed = 0
 
-	# importer = TrialImporter(db)
+	importer = TrialImporter(db)
 
 	# # Walk through the xml files and add them to the DB
-	# for root, dirs, files in os.walk(xmlFilesPath):
+	for root, dirs, files in os.walk(xmlFilesPath):
 
-	# 	for filename in files:
-	# 		if limit > 0 and numberParsed > limit:
-	# 			break
+		for filename in files:
+			if limit > 0 and numberParsed > limit:
+				break
 
-	# 		if skipFile and file.startswith(startID):
-	# 			skipFile = False
+			if skipFile and file.startswith(startID):
+				skipFile = False
 
-	# 		if not skipFile:
-	# 			trial = XMLTrial(os.path.join(root, filename))
-	# 			trial.populate()
+			if not skipFile:
+				trial = XMLTrial(os.path.join(root, filename))
+				trial.populate()
 				
-	# 			importer.addTrial(trial)
-	# 			numberParsed += 1
+				importer.addTrial(trial)
+				numberParsed += 1
 	
-	# importer.commitTrials()
+	importer.commitTrials()
 	db.close()
 
 
@@ -89,8 +90,7 @@ class DBManager(object):
 		sessionMaker = sessionmaker(bind=self.engine)
 		self.session = sessionMaker()
 
-		# self.Base = declarative_base(cls=Base)
-		# importer = NewImporter(self.engine, BaseClass)
+		# importer = TrialImporter(self.engine, BaseClass)
 
 		# self.connection = sqlite3.connect(self.path)
 		# self.cursor = self.connection.cursor()
@@ -98,8 +98,6 @@ class DBManager(object):
 
 		# if initalize:
 		self.initalize()
-
-		self.testCreation()	
 
 		# else:
 		# 	# Check the database's version
@@ -121,11 +119,17 @@ class DBManager(object):
 		Base.metadata.create_all(self.engine)
 
 
-	def testCreation(self):
-		newTrial = Trial("NCT00000102", "Congenital Adrenal Hyperplasia: Calcium Channels as Therapeutic Targets")
-		print repr(newTrial)
-		self.session.add(newTrial)
-		self.commitContent()
+	# def testCreation(self):
+	# 	pass
+		# newTrial = Trial("NCT00000102", "Congenital Adrenal Hyperplasia: Calcium Channels as Therapeutic Targets")
+		# self.session.merge(newTrial)
+		# newCountry = Country("United States")
+		# self.session.merge(newCountry)
+		# newCountry3 = Country("Vietnam")
+		# self.session.merge(newCountry3)
+		# newCountry2 = Country("United States")
+		# self.session.merge(newCountry2)
+		# self.commitContent()
 
 
 	def execute(self, *sql):
@@ -145,7 +149,6 @@ class DBManager(object):
 
 
 	def commitContent(self):
-		pass
 		# self.connection.commit()
 		self.session.commit()
 
@@ -165,10 +168,6 @@ class DBManager(object):
 # TrialImporter
 ###
 
-class NewImporter(object):
-	def __init__(self, dbManager):
-		print "Created NewImporter"
-
 class TrialImporter(object):
 	def __init__(self, dbManager):
 		self.db = dbManager
@@ -184,15 +183,16 @@ class TrialImporter(object):
 	def addTrial(self, trial):
 		if trial.isComplete():
 			self.currentNCTID = trial.nctID
-			
-			sponsorClassID = self.insertSponsorClass(trial)
-			sponsorID = self.insertSponsor(trial, sponsorClassID)
-			countryIDs = self.insertCountries(trial)
+			print "will add trial: %s" % self.currentNCTID
 
-			trialID = self.insertTrial(trial, sponsorID)
+			# sponsorClassID = self.insertSponsorClass(trial)
+			# sponsorID = self.insertSponsor(trial, sponsorClassID)
+			countries = self.insertCountries(trial)
 
-			self.insertTrialCountries(trialID, countryIDs)
-			self.insertInterventions(trial, trialID)
+			# trialID = self.insertTrial(trial, sponsorID)
+
+			# self.insertTrialCountries(trialID, countryIDs)
+			# self.insertInterventions(trial, trialID)
 	
 
 	def sqlDate(self, date):
@@ -235,15 +235,11 @@ class TrialImporter(object):
 
 
 	def insertCountries(self, trial):
-		countryIDs = []
-
+		outCountries = []
 		for country in trial.countries:
-			self.db.execute('INSERT OR IGNORE INTO countries (name) VALUES(?)', (country,))
-			self.db.execute('SELECT id FROM countries WHERE name = ?', (country,))
-			
-			countryIDs.append(self.db.cursor.fetchone()[0])
+			outCountries.append(self.getOrCreateCountry(country))
 
-		return countryIDs
+		return outCountries
 
 
 	def insertTrial(self, trial, sponsorID):
@@ -296,6 +292,22 @@ class TrialImporter(object):
 			return 1
 		else:
 			return 0
+
+
+	def getOrCreateCountry(self, countryName):
+		return self.getOrCreate(self.db.session, Country, name=countryName)
+
+
+	def getOrCreate(self, session, model, defaults=None, **kwargs):
+		instance = session.query(model).filter_by(**kwargs).first()
+		if instance:
+			return instance, False
+		else:
+			params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
+			# params.update(defaults)
+			instance = model(**params)
+			session.add(instance)
+			return instance, True
 		
 
 
