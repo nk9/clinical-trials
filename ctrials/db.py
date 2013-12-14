@@ -39,14 +39,17 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 
 	importer = TrialImporter(db)
 
-	# # Walk through the xml files and add them to the DB
+	# Walk through the xml files and add them to the DB
 	for root, dirs, files in os.walk(xmlFilesPath):
 
 		for filename in files:
+			if not filename.endswith('xml'):
+				continue
+
 			if limit > 0 and numberParsed > limit:
 				break
 
-			if skipFile and file.startswith(startID):
+			if skipFile and filename.startswith(startID):
 				skipFile = False
 
 			if not skipFile:
@@ -57,7 +60,7 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 				numberParsed += 1
 	
 	importer.commitTrials()
-	db.close()
+	db.close(setVersion=True)
 
 
 
@@ -77,85 +80,67 @@ class DBManager(object):
 		self.user_version = 3
 
 		self.path = dbPath
-		# self.connection = None
-		# self.cursor = None
-
 		self.engine = None
 		self.session = None
 
 
 	def open(self, initalize=False):
+		if not initalize:
+			self.checkVersion()
+
 		URL = 'sqlite:///%s' % self.path
 		self.engine = create_engine(URL, echo=True)
 		sessionMaker = sessionmaker(bind=self.engine)
 		self.session = sessionMaker()
 
-		# importer = TrialImporter(self.engine, BaseClass)
-
-		# self.connection = sqlite3.connect(self.path)
-		# self.cursor = self.connection.cursor()
-		# self.cursor.execute('PRAGMA foreign_keys = ON;')
-
-		# if initalize:
-		self.initalize()
-
-		# else:
-		# 	# Check the database's version
-		# 	self.cursor.execute('PRAGMA user_version;')
-		# 	version = self.cursor.fetchone()[0]
-
-		# 	if version != self.user_version:
-		# 		raise DBException("Error opening database file: versions don't match",
-		# 						  {'script version' : self.user_version, 'database version' : version })
+		if initalize:
+			self.initalize()
 	
 
 	def initalize(self):
-		# SQLInit = open(utils.relativePath('db_init.sql')).read()
-		
-		# self.cursor.execute('PRAGMA user_version = %d;' % self.user_version)
-		# self.cursor.executescript(SQLInit)
-		
-		# self.connection.commit()
 		Base.metadata.create_all(self.engine)
 
 
-	# def testCreation(self):
-	# 	pass
-		# newTrial = Trial("NCT00000102", "Congenital Adrenal Hyperplasia: Calcium Channels as Therapeutic Targets")
-		# self.session.merge(newTrial)
-		# newCountry = Country("United States")
-		# self.session.merge(newCountry)
-		# newCountry3 = Country("Vietnam")
-		# self.session.merge(newCountry3)
-		# newCountry2 = Country("United States")
-		# self.session.merge(newCountry2)
-		# self.commitContent()
+	def checkVersion(self):
+		connection = sqlite3.connect(self.path)
+		cursor = connection.cursor()
+		cursor.execute('PRAGMA user_version;')
+		version = cursor.fetchone()[0]
+		cursor.close()
+
+		if version != self.user_version:
+			raise DBException("Error opening database file: versions don't match",
+							  {'script version' : self.user_version, 'database version' : version })
 
 
-	def execute(self, *sql):
-		pass
-		# self.cursor.execute(*sql)
+	def setVersion(self):
+		connection = sqlite3.connect(self.path)
+		cursor = connection.cursor()
+		cursor.execute('PRAGMA user_version = %d;' % self.user_version)
+		cursor.close()
 
 
-	def executeAndFetchAll(self, *sql):
-		pass
-		# self.execute(*sql)
-		# return self.cursor.fetchall()
+	def getOrCreate(self, model, defaults=None, **kwargs):
+		instance = self.session.query(model).filter_by(**kwargs).first()
 
-
-	def fetchOneFirstCol(self):
-		pass
-		# return self.cursor.fetchone()[0]
+		if instance:
+			return instance	#, False
+		else:
+			params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
+			instance = model(**params)
+			self.session.add(instance)
+			return instance	#, True
 
 
 	def commitContent(self):
-		# self.connection.commit()
 		self.session.commit()
 
 
-	def close(self):
+	def close(self, setVersion=False):
 		self.session.close()
-		# self.cursor.close()
+
+		if setVersion:
+			self.setVersion()
 
 
 
@@ -206,7 +191,7 @@ class TrialImporter(object):
 
 
 	def insertSponsorClass(self, trial):
-		return self.getOrCreate(SponsorClass, sclass=trial.sponsorClass)
+		return self.db.getOrCreate(SponsorClass, sclass=trial.sponsorClass)
 	
 
 	def insertSponsor(self, trial, sponsorClass):
@@ -223,13 +208,13 @@ class TrialImporter(object):
 			if m:
 				shortName = m.groups()[0]
 
-		return self.getOrCreate(Sponsor, name=name, shortName=shortName, sclass=sponsorClass)
+		return self.db.getOrCreate(Sponsor, name=name, shortName=shortName, sclass=sponsorClass)
 
 
 	def insertCountries(self, trial):
 		outCountries = []
 		for country in trial.countries:
-			outCountries.append(self.getOrCreate(Country, name=country))
+			outCountries.append(self.db.getOrCreate(Country, name=country))
 
 		return outCountries
 
@@ -250,16 +235,11 @@ class TrialImporter(object):
 		return trial
 
 
-	def insertTrialCountries(self, trialID, countryIDs):
-		for countryID in countryIDs:
-			self.db.execute('INSERT INTO trialCountries (trial_id, country_id) VALUES(?,?)', (trialID, countryID))
-
-
 	def insertInterventions(self, xmlTrial):
 		interventions = []
 
 		for iDict in xmlTrial.interventions:
-			itype = self.getOrCreate(InterventionType, itype=iDict["type"])
+			itype = self.db.getOrCreate(InterventionType, itype=iDict["type"])
 			intervention = Intervention(iDict["name"], itype)
 			interventions.append(intervention)
 
@@ -281,19 +261,6 @@ class TrialImporter(object):
 			return 1
 		else:
 			return 0
-
-
-	def getOrCreate(self, model, defaults=None, **kwargs):
-		instance = self.db.session.query(model).filter_by(**kwargs).first()
-
-		if instance:
-			return instance	#, False
-		else:
-			params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
-			# params.update(defaults)
-			instance = model(**params)
-			self.db.session.add(instance)
-			return instance	#, True
 		
 
 
