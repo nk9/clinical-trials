@@ -180,19 +180,17 @@ class TrialImporter(object):
 		shortNamesFile.close()
 
 
-	def addTrial(self, trial):
-		if trial.isComplete():
-			self.currentNCTID = trial.nctID
+	def addTrial(self, xmlTrial):
+		if xmlTrial.isComplete():
+			self.currentNCTID = xmlTrial.nctID
 			print "will add trial: %s" % self.currentNCTID
 
-			# sponsorClassID = self.insertSponsorClass(trial)
-			# sponsorID = self.insertSponsor(trial, sponsorClassID)
-			countries = self.insertCountries(trial)
+			sponsorClass = self.insertSponsorClass(xmlTrial)
+			sponsor = self.insertSponsor(xmlTrial, sponsorClass)
+			countries = self.insertCountries(xmlTrial)
+			interventions = self.insertInterventions(xmlTrial)
 
-			# trialID = self.insertTrial(trial, sponsorID)
-
-			# self.insertTrialCountries(trialID, countryIDs)
-			# self.insertInterventions(trial, trialID)
+			trial = self.insertTrial(xmlTrial, sponsor, countries, interventions)
 	
 
 	def sqlDate(self, date):
@@ -208,13 +206,10 @@ class TrialImporter(object):
 
 
 	def insertSponsorClass(self, trial):
-		self.db.execute('INSERT OR IGNORE INTO sponsorClasses (class) VALUES(?)', (trial.sponsorClass,))
-		self.db.execute('SELECT id FROM sponsorClasses WHERE class = ?', (trial.sponsorClass,))
-		
-		return self.db.fetchOneFirstCol()
+		return self.getOrCreate(SponsorClass, sclass=trial.sponsorClass)
 	
 
-	def insertSponsor(self, trial, sponsorClassID):
+	def insertSponsor(self, trial, sponsorClass):
 		name = trial.leadSponsor
 		shortName = None
 
@@ -228,39 +223,31 @@ class TrialImporter(object):
 			if m:
 				shortName = m.groups()[0]
 
-		self.db.execute('INSERT OR IGNORE INTO sponsors (name, shortName, class_id) VALUES(?,?,?)', (name, shortName, sponsorClassID))
-		self.db.execute('SELECT id FROM sponsors WHERE name = ?', (name,))
-		
-		return self.db.fetchOneFirstCol()
+		return self.getOrCreate(Sponsor, name=name, shortName=shortName, sclass=sponsorClass)
 
 
 	def insertCountries(self, trial):
 		outCountries = []
 		for country in trial.countries:
-			outCountries.append(self.getOrCreateCountry(country))
+			outCountries.append(self.getOrCreate(Country, name=country))
 
 		return outCountries
 
 
-	def insertTrial(self, trial, sponsorID):
-		columns = [	'sponsor_id', 'title', 'nctID', 'status', 'phaseMask', 'startDate',
-					'completionDate', 'primaryCompletionDate', 'resultsDate', 'includedInPrayle']
-		sqlString = 'INSERT INTO trials ({0}) VALUES ({1})'.format(','.join(columns), ','.join(['?']*len(columns)))
+	def insertTrial(self, xmlTrial, sponsor, countries, interventions):
+		trial = Trial(xmlTrial.nctID)
+		trial.countries = countries
+		trial.sponsor = sponsor
+		trial.interventions = interventions
 
-		self.db.execute(sqlString,
-							(sponsorID,
-							 trial.title,
-							 trial.nctID,
-							 trial.recruitment,
-							 trial.phaseMask,
-							 self.sqlDate(trial.startDate),
-							 self.sqlDate(trial.completionDate),
-							 self.sqlDate(trial.primaryCompletionDate),
-							 self.sqlDate(trial.resultsDate),
-							 self.trialIncludedInPrayle(trial)))
-		self.db.execute('SELECT id FROM trials WHERE nctID = ?', (trial.nctID,))
+		for col in trial.domesticKeys:
+			value = getattr(xmlTrial, col, None)
 
-		return self.db.fetchOneFirstCol()
+			if value:
+				setattr(trial, col, value)
+
+		self.db.session.add(trial)
+		return trial
 
 
 	def insertTrialCountries(self, trialID, countryIDs):
@@ -268,15 +255,17 @@ class TrialImporter(object):
 			self.db.execute('INSERT INTO trialCountries (trial_id, country_id) VALUES(?,?)', (trialID, countryID))
 
 
-	def insertInterventions(self, trial, trialID):
-		for iDict in trial.interventions:
-			# First, insert the type into the types table
-			self.db.execute('INSERT OR IGNORE INTO interventionTypes (type) VALUES(?)', (iDict["type"],))
-			self.db.execute('SELECT id FROM interventionTypes WHERE type = ?', (iDict["type"],))
-			typeID = self.db.fetchOneFirstCol()
+	def insertInterventions(self, xmlTrial):
+		interventions = []
 
-			# Then, add the intervention itself to the interventions table
-			self.db.execute('INSERT INTO interventions (trial_id, type_id, name) VALUES(?,?,?)', (trialID, typeID, iDict["name"]))
+		for iDict in xmlTrial.interventions:
+			itype = self.getOrCreate(InterventionType, itype=iDict["type"])
+			intervention = Intervention(iDict["name"], itype)
+			interventions.append(intervention)
+
+			self.db.session.add(intervention)
+
+		return interventions
 
 	
 	def commitTrials(self):
@@ -294,20 +283,17 @@ class TrialImporter(object):
 			return 0
 
 
-	def getOrCreateCountry(self, countryName):
-		return self.getOrCreate(self.db.session, Country, name=countryName)
+	def getOrCreate(self, model, defaults=None, **kwargs):
+		instance = self.db.session.query(model).filter_by(**kwargs).first()
 
-
-	def getOrCreate(self, session, model, defaults=None, **kwargs):
-		instance = session.query(model).filter_by(**kwargs).first()
 		if instance:
-			return instance, False
+			return instance	#, False
 		else:
 			params = dict((k, v) for k, v in kwargs.iteritems() if not isinstance(v, ClauseElement))
 			# params.update(defaults)
 			instance = model(**params)
-			session.add(instance)
-			return instance, True
+			self.db.session.add(instance)
+			return instance	#, True
 		
 
 
@@ -321,9 +307,9 @@ class XMLTrial(object):
 		self.fields = []
 		
 		# Header fields
-		self.headerFields = ['NCT ID', 'Lead Sponsor', 'Sponsor Class', 'Recruitment', 'Interventions',
-							 'Start Date', 'Completion Date', 'Primary Completion Date', 'Results Date',
-							 'Phase', 'Countries']
+		# self.headerFields = ['NCT ID', 'Lead Sponsor', 'Sponsor Class', 'Recruitment', 'Interventions',
+		# 					 'Start Date', 'Completion Date', 'Primary Completion Date', 'Results Date',
+		# 					 'Phase', 'Countries']
 		
 		# Field variables
 		self.nctID = os.path.splitext(os.path.basename(path))[0]

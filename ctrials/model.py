@@ -50,8 +50,9 @@ class Intervention(Base, CTrialsModelMixin):
 
 	itype = relationship("InterventionType")
 
-	def __init__(self, name):
+	def __init__(self, name, itype):
 		self.name = name
+		self.itype = itype
 
 
 class SponsorClass(Base, CTrialsModelMixin):
@@ -72,9 +73,10 @@ class Sponsor(Base, CTrialsModelMixin):
 
 	sclass = relationship("SponsorClass")
 
-	def __init__(self, name, shortName):
+	def __init__(self, name, shortName, sclass):
 		self.name = name
 		self.shortName = shortName
+		self.sclass = sclass
 
 
 trial_countries = Table('trialCountries', Base.metadata,
@@ -96,6 +98,10 @@ class Trial(Base, CTrialsModelMixin):
 	phaseMask = Column(Integer)
 	includedInPrayle = Column(Boolean)
 
+	# Non-Foreign Key properties. Used for populating the object from an XMLTrial
+	domesticKeys = ['nctID', 'title', 'status', 'startDate', 'completionDate',
+					'primaryCompletionDate', 'resultsDate', 'phaseMask', 'includedInPrayle']
+
 	# Foreign Keys
 	countries = relationship('Country', secondary=trial_countries, backref='trials')
 
@@ -104,9 +110,8 @@ class Trial(Base, CTrialsModelMixin):
 
 	interventions = relationship('Intervention')
 
-	def __init__(self, nctID, title):
+	def __init__(self, nctID):
 		self.nctID = nctID
-		self.title = title
 
 
 
