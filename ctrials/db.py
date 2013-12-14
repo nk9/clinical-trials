@@ -10,7 +10,7 @@ from . import utils
 from model import *
 
 #SQLAlchemy
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import ClauseElement
 
@@ -18,7 +18,7 @@ from sqlalchemy.sql.expression import ClauseElement
 def main():
 	create("trialsDB.sqlite3", "trials_xml")
 
-def create(dbPath, xmlFilesPath, startID=None, limit=0):
+def create(dbPath, xmlFilesPath, startNumber, limit=0):
 	# Remove the database file if it already exists
 	try:
 		os.remove(dbPath)
@@ -34,8 +34,9 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 		sys.exit(1)
 
 	# Iteration state
-	skipFile = (startID is not None)
+	skipFile = (startNumber > 0)
 	numberParsed = 0
+	idNumRE = re.compile('NCT0*(\d*).xml')
 
 	importer = TrialImporter(db)
 
@@ -49,8 +50,15 @@ def create(dbPath, xmlFilesPath, startID=None, limit=0):
 			if limit > 0 and numberParsed > limit:
 				break
 
-			if skipFile and filename.startswith(startID):
-				skipFile = False
+			if skipFile:
+				m = idNumRE.match(filename)
+				thisID = 0
+
+				if m:
+					thisID = int(m.group(1))
+
+				if thisID >= startNumber:
+					skipFile = False
 
 			if not skipFile:
 				trial = XMLTrial(os.path.join(root, filename))
@@ -89,13 +97,17 @@ class DBManager(object):
 			self.checkVersion()
 
 		URL = 'sqlite:///%s' % self.path
-		self.engine = create_engine(URL, echo=True)
+		self.engine = create_engine(URL, echo=False)
+		event.listen(self.engine, 'connect', self.pragmaOnConnect)
 		sessionMaker = sessionmaker(bind=self.engine)
 		self.session = sessionMaker()
 
 		if initalize:
 			self.initalize()
-	
+
+
+	def pragmaOnConnect(self, dbapi_con, con_record):
+		dbapi_con.execute('pragma foreign_keys=ON')
 
 	def initalize(self):
 		Base.metadata.create_all(self.engine)

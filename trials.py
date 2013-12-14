@@ -16,7 +16,7 @@ def main():
 			print "If you're going to create a database, you must pass in the path to the XML files directory"
 			return 0
 		else:
-			dbPath =  db.create(args.dbPath, args.xmlFilesPath, args.startID, args.limit)
+			dbPath =  db.create(args.dbPath, args.xmlFilesPath, args.startNumber, args.limit)
 
 	# Create the charts
 	# chartsPath = "web/js/charts.json"
@@ -38,7 +38,8 @@ def parseArguments():
 						help='Choose a destination for the JSON file describing the charts; defaults to "web/js/charts.json"')
 	parser.add_argument('--limit', dest='limit', type=int,
 						help='Set a limit on the number of files from the XML path to be included')
-	parser.add_argument('--startID', dest='startID', help='Choose an NCT ID to start from')
+	parser.add_argument('--start', dest='startNumber', type=int, default=0,
+						help='Choose an NCT ID number to start from; eg 500 for NCT00000500. Need not actually exist')
 	parser.add_argument('dbPath', default='trialsDB.sqlite3',
 						help='The path to the trials database file, either to be created or already there')
 						
