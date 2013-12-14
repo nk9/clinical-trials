@@ -19,11 +19,7 @@ def main():
 			dbPath =  db.create(args.dbPath, args.xmlFilesPath, args.startNumber, args.limit)
 
 	# Create the charts
-	# chartsPath = "web/js/charts.json"
-	# if args.chartsPath is not None:
-	# 	chartsPath = args.chartsPath
-
-	# charts.create(chartsPath, args.dbPath)
+	charts.create(args.chartsPath, args.dbPath, args.force)
 
 
 
@@ -34,7 +30,7 @@ def parseArguments():
 						help='Create and initalize the DB file using the path provided')
 	parser.add_argument('--xmlFilesPath', dest='xmlFilesPath',
 						help='A directory of trials in ClinicalTrials.gov\'s XML format')
-	parser.add_argument('--chartsPath', dest='chartsPath',
+	parser.add_argument('--chartsPath', dest='chartsPath', default="web/js/charts.json",
 						help='Choose a destination for the JSON file describing the charts; defaults to "web/js/charts.json"')
 	parser.add_argument('--limit', dest='limit', type=int,
 						help='Set a limit on the number of files from the XML path to be included')
@@ -42,7 +38,9 @@ def parseArguments():
 						help='Choose an NCT ID number to start from; eg 500 for NCT00000500. Need not actually exist')
 	parser.add_argument('dbPath', default='trialsDB.sqlite3',
 						help='The path to the trials database file, either to be created or already there')
-						
+	parser.add_argument('--force', dest='force', action='store_true', default=False,
+						help='Ignore database version mismatch')
+
 	return parser.parse_args()
 
 

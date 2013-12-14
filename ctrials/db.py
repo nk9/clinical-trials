@@ -27,8 +27,8 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 
 	# Create the database file anew
 	try:
-		db = DBManager(dbPath)
-		db.open(initalize=True)
+		db = DBManager(dbPath, initialize=True)
+		db.open()
 	except DBException as e:
 		print e
 		sys.exit(1)
@@ -68,7 +68,7 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 				numberParsed += 1
 	
 	importer.commitTrials()
-	db.close(setVersion=True)
+	db.close()
 
 
 
@@ -81,55 +81,53 @@ class DBException(Exception):
 	pass
 
 class DBManager(object):
-	def __init__(self, dbPath):
+	def __init__(self, dbPath, initialize=False):
 		####
 		# Current user_version of the SQL database
 		####
 		self.user_version = 3
-
+		self.initialize = initialize
 		self.path = dbPath
+
+		# SQLAlchemy
 		self.engine = None
 		self.session = None
 
+		#SQLite3
+		self.cursor = None
+		self.connection = None
 
-	def open(self, initalize=False):
-		if not initalize:
-			self.checkVersion()
 
+	def open(self, force=False):
+		if self.initialize:
+			self.initializeSQLAlchemy()
+		else:
+			self.initializeSQLite(force)
+
+
+	def close(self):
+		if self.initialize:
+			self.session.close()
+		else:
+			self.cursor.close()
+
+
+	##
+	## SQLAlchemy for creating and updating the database
+	##
+	def pragmaOnConnect(self, dbapi_con, con_record):
+		dbapi_con.execute('pragma foreign_keys=ON')
+		dbapi_con.execute('pragma user_version=%d' % self.user_version)
+
+
+	def initializeSQLAlchemy(self):
 		URL = 'sqlite:///%s' % self.path
 		self.engine = create_engine(URL, echo=False)
 		event.listen(self.engine, 'connect', self.pragmaOnConnect)
 		sessionMaker = sessionmaker(bind=self.engine)
 		self.session = sessionMaker()
 
-		if initalize:
-			self.initalize()
-
-
-	def pragmaOnConnect(self, dbapi_con, con_record):
-		dbapi_con.execute('pragma foreign_keys=ON')
-
-	def initalize(self):
 		Base.metadata.create_all(self.engine)
-
-
-	def checkVersion(self):
-		connection = sqlite3.connect(self.path)
-		cursor = connection.cursor()
-		cursor.execute('PRAGMA user_version;')
-		version = cursor.fetchone()[0]
-		cursor.close()
-
-		if version != self.user_version:
-			raise DBException("Error opening database file: versions don't match",
-							  {'script version' : self.user_version, 'database version' : version })
-
-
-	def setVersion(self):
-		connection = sqlite3.connect(self.path)
-		cursor = connection.cursor()
-		cursor.execute('PRAGMA user_version = %d;' % self.user_version)
-		cursor.close()
 
 
 	def getOrCreate(self, model, defaults=None, **kwargs):
@@ -148,13 +146,29 @@ class DBManager(object):
 		self.session.commit()
 
 
-	def close(self, setVersion=False):
-		self.session.close()
 
-		if setVersion:
-			self.setVersion()
+	##
+	## SQLite3 for querying the database with raw SQL
+	##
+	def initializeSQLite(self, force):
+		self.connection = sqlite3.connect(self.path)
+		self.cursor = self.connection.cursor()
+
+		if not force:
+			self.checkVersion()
+
+	def checkVersion(self):
+		self.cursor.execute('PRAGMA user_version;')
+		version = self.cursor.fetchone()[0]
+
+		if version != self.user_version:
+			raise DBException("Error opening database file: versions don't match",
+							  {'script version' : self.user_version, 'database version' : version })
 
 
+	def executeAndFetchAll(self, *sql):
+		self.cursor.execute(*sql)
+		return self.cursor.fetchall()
 
 
 
@@ -274,6 +288,7 @@ class TrialImporter(object):
 		else:
 			return 0
 		
+
 
 
 ###

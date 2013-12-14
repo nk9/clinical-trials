@@ -7,8 +7,8 @@ from . import db
 from . import utils
 
 
-def create(chartsPath, dbPath):
-	jsonString = createCharts(loadChartDefs(), dbPath)
+def create(chartsPath, dbPath, force):
+	jsonString = createCharts(loadChartDefs(), dbPath, force)
 
 	if (len(jsonString)):
 		chartsFile = open(chartsPath, 'w')
@@ -30,12 +30,12 @@ def loadChartDefs():
 
 	return chartDefs
 
-def createCharts(chartDefs, dbPath):
+def createCharts(chartDefs, dbPath, force):
 	charts = {}
 
 	try:
 		database = db.DBManager(dbPath)
-		database.open()
+		database.open(force)
 
 		for (chartID, chartDef) in chartDefs.iteritems():
 			chart = Chart(chartID, chartDef, database)
