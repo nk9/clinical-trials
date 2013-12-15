@@ -4,6 +4,9 @@ import argparse
 import ctrials.db as db
 import ctrials.charts as charts
 import os
+from clinical_trials_python.clinical_trials import Trials
+from zipfile import ZipFile
+from StringIO import StringIO
 
 def main():
 	# Handle the arguments
@@ -18,11 +21,20 @@ def main():
 		else:
 			dbPath =  db.create(args.dbPath, args.xmlFilesPath, args.startNumber, args.limit)
 
+	if args.update:
+		update(args.dbPath)
+
 	# Create the charts
 	charts.create(args.chartsPath, args.dbPath, args.force)
 
 
 
+def update(dbPath):
+	zipData = Trials().download('pediatric', lastUpdatedStart='04/01/2013', lastUpdatedEnd='4/30/2013')
+	zipfile = ZipFile(StringIO(zipData))
+	print zipfile.namelist()
+
+	db.update(dbPath, zipfile)
 
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Manage and data mine a clinical trials database')
@@ -40,6 +52,8 @@ def parseArguments():
 						help='The path to the trials database file, either to be created or already there')
 	parser.add_argument('--force', dest='force', action='store_true', default=False,
 						help='Ignore database version mismatch')
+	parser.add_argument('--update', dest='update', action='store_true', default=False,
+						help='Update database with trials added since the most recent one')
 
 	return parser.parse_args()
 

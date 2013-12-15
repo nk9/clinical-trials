@@ -95,12 +95,13 @@ class Trial(Base, CTrialsModelMixin):
 	completionDate = Column(Date)
 	primaryCompletionDate = Column(Date)
 	resultsDate = Column(Date)
+	lastChangedDate = Column(Date)
 	phaseMask = Column(Integer)
 	includedInPrayle = Column(Boolean)
 
 	# Non-Foreign Key properties. Used for populating the object from an XMLTrial
-	domesticKeys = ['nctID', 'title', 'status', 'startDate', 'completionDate',
-					'primaryCompletionDate', 'resultsDate', 'phaseMask', 'includedInPrayle']
+	domesticKeys = ['nctID', 'title', 'status', 'startDate', 'completionDate', 'includedInPrayle',
+					'primaryCompletionDate', 'resultsDate', 'phaseMask', 'lastChangedDate']
 
 	# Foreign Keys
 	countries = relationship('Country', secondary=trial_countries, backref='trials')

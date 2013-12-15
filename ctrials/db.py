@@ -27,7 +27,7 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 
 	# Create the database file anew
 	try:
-		db = DBManager(dbPath, initialize=True)
+		db = DBManager(dbPath, mutable=True)
 		db.open()
 	except DBException as e:
 		print e
@@ -61,15 +61,34 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 					skipFile = False
 
 			if not skipFile:
-				trial = XMLTrial(os.path.join(root, filename))
-				trial.populate()
+				xmlTrial = XMLTrial.withPath(os.path.join(root, filename))
+				xmlTrial.populate()
 				
-				importer.addTrial(trial)
+				importer.addTrial(xmlTrial)
 				numberParsed += 1
 	
 	importer.commitTrials()
 	db.close()
 
+
+def update(dbPath, zipfile):
+	# db = DBManager(dbPath, mutable=True)
+	# db.open()
+
+	# importer = TrialImporter(db)
+
+	for name in zipfile.namelist():
+		nctID = os.path.basename(name)
+		data = zipfile.read(name)
+		xmlTrial = XMLTrial(data, nctID)
+		xmlTrial.populate()
+
+		print xmlTrial.title
+
+	# 	importer.updateTrial(xmlTrial)
+
+	# importer.commitTrials()
+	# db.close()
 
 
 
@@ -81,12 +100,12 @@ class DBException(Exception):
 	pass
 
 class DBManager(object):
-	def __init__(self, dbPath, initialize=False):
+	def __init__(self, dbPath, mutable=False):
 		####
 		# Current user_version of the SQL database
 		####
 		self.user_version = 3
-		self.initialize = initialize
+		self.mutable = mutable
 		self.path = dbPath
 
 		# SQLAlchemy
@@ -99,14 +118,14 @@ class DBManager(object):
 
 
 	def open(self, force=False):
-		if self.initialize:
+		if self.mutable:
 			self.initializeSQLAlchemy()
 		else:
 			self.initializeSQLite(force)
 
 
 	def close(self):
-		if self.initialize:
+		if self.mutable:
 			self.session.close()
 		else:
 			self.cursor.close()
@@ -296,9 +315,9 @@ class TrialImporter(object):
 ###
 
 class XMLTrial(object):
-	def __init__(self, path):
-		self.path = path
+	def __init__(self, data, nctID):
 		self.fields = []
+		self.string = data
 		
 		# Header fields
 		# self.headerFields = ['NCT ID', 'Lead Sponsor', 'Sponsor Class', 'Recruitment', 'Interventions',
@@ -306,7 +325,7 @@ class XMLTrial(object):
 		# 					 'Phase', 'Countries']
 		
 		# Field variables
-		self.nctID = os.path.splitext(os.path.basename(path))[0]
+		self.nctID = nctID
 		self.leadSponsor = ""
 		self.sponsorClass = ""
 		self.recruitment = ""
@@ -315,10 +334,18 @@ class XMLTrial(object):
 		self.completionDate = ''
 		self.primaryCompletionDate = ''
 		self.resultsDate = ''
+		self.lastChangedDate = ''
 		self.phaseMask = 0
 		self.countries = []
 		self.title = ""
-	
+
+
+	@classmethod
+	def withPath(cls, path):
+		data = open(path).read()
+		nctID = os.path.splitext(os.path.basename(path))[0]
+
+		return cls(data, nctID)
 	
 	
 	def populate(self):
@@ -329,7 +356,7 @@ class XMLTrial(object):
 	# Getting the data and parsing it
 	###
 	def parseXML(self):
-		etree = xml.fromstring(open(self.path).read())
+		etree = xml.fromstring(self.string)
 
 		# Pull out the data
 		self.title = etree.find("brief_title").text
@@ -351,13 +378,12 @@ class XMLTrial(object):
 		self.completionDate = self.parseDate(etree.find("completion_date"))
 		self.primaryCompletionDate = self.parseDate(etree.find("primary_completion_date"))
 		self.resultsDate = self.parseDate(etree.find("firstreceived_results_date"))
-
+		self.lastChangedDate = self.parseDate(etree.find("lastchanged_date"))
 
 
 	def isComplete(self):
 		"""This will probably contain more checks"""
 		return	self.startDate is not None
-	
 	
 	
 	def parseDate(self, date):
