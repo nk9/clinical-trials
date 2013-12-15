@@ -3,7 +3,7 @@ SELECT COUNT(class)
 FROM trials, sponsors, sponsorClasses
 WHERE trials.sponsor_id = sponsors.id
 AND sponsors.class_id = sponsorClasses.id
-AND resultsDate = 0;
+AND resultsDate IS NULL;
 
 
 # Counts of no-results trials by sponsor class
@@ -12,7 +12,7 @@ SELECT class, COUNT(class)
 FROM trials AS t, sponsors, sponsorClasses
 WHERE t.sponsor_id = sponsors.id
 AND sponsors.class_id = sponsorClasses.id
-AND resultsDate = 0
+AND resultsDate IS NULL
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY class;
 
@@ -24,16 +24,16 @@ FROM
 FROM trials, interventions, interventionTypes
 WHERE trials.id = interventions.trial_id
 AND interventionTypes.id = interventions.type_id
-AND trials.resultsDate = 0
-AND trials.completionDate > 0
+AND trials.resultsDate IS NULL
+AND trials.completionDate IS NOT NULL
 GROUP BY type) as allTrials
 LEFT JOIN
 (SELECT type, COUNT(type) as count
 FROM trials, interventions, interventionTypes
 WHERE trials.id = interventions.trial_id
 AND interventionTypes.id = interventions.type_id
-AND trials.resultsDate > 0
-AND trials.completionDate > 0
+AND trials.resultsDate IS NOT NULL
+AND trials.completionDate IS NOT NULL
 GROUP BY type) as haveResults
 ON allTrials.type = haveResults.type
 GROUP BY allTrials.type;
@@ -63,7 +63,7 @@ FROM
 (SELECT s.id AS sponsor, ifnull(s.shortName, s.name) as sponsorName, COUNT(t.id) AS count
 FROM trials AS t, sponsors AS s
 WHERE s.id = t.sponsor_id
-AND t.resultsDate = 0
+AND t.resultsDate IS NULL
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY sponsor_id
 ORDER BY count DESC) AS noResults
@@ -71,7 +71,7 @@ LEFT JOIN
 (SELECT s.id AS sponsor, COUNT(t.id) AS count
 FROM trials as t, sponsors AS s
 WHERE s.id = t.sponsor_id
-AND t.resultsDate > 0
+AND t.resultsDate IS NOT NULL
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY sponsor_id
 ORDER BY count DESC) AS haveResults
@@ -81,9 +81,9 @@ LIMIT 10;
 
 # Missing results by study phase
 # id=missing_by_phase
-SELECT t.phaseMask, COUNT(t.id) as count
+SELECT IFNULL(t.phaseMask, 0), COUNT(t.id) as count
 FROM trials as t
-WHERE t.resultsDate = 0
+WHERE t.resultsDate IS NULL
 AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')
 GROUP BY t.phaseMask
 ORDER BY t.phaseMask;

@@ -38,12 +38,12 @@
                     "name" : "Completed Trials Missing Results"
                 }
             ],
+            "title" : {
+                "text" : "Ten Most Unreporting Sponsors"
+            },
             "tooltip" : {
                 "percentageDecimals" : 1,
                 "pointFormat" : "{series.name}: <b>{point.y}</b> ({point.percentage}%)"
-            },
-            "title" : {
-                "text" : "Ten Most Unreporting Sponsors"
             },
             "xAxis" : {
                 "categories" : [
@@ -83,7 +83,7 @@
             "(SELECT s.id AS sponsor, ifnull(s.shortName, s.name) as sponsorName, COUNT(t.id) AS count",
             "FROM trials AS t, sponsors AS s",
             "WHERE s.id = t.sponsor_id",
-            "AND t.resultsDate = 0",
+            "AND t.resultsDate IS NULL",
             "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
             "GROUP BY sponsor_id",
             "ORDER BY count DESC) AS noResults",
@@ -91,7 +91,7 @@
             "(SELECT s.id AS sponsor, COUNT(t.id) AS count",
             "FROM trials as t, sponsors AS s",
             "WHERE s.id = t.sponsor_id",
-            "AND t.resultsDate > 0",
+            "AND t.resultsDate IS NOT NULL",
             "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
             "GROUP BY sponsor_id",
             "ORDER BY count DESC) AS haveResults",
@@ -256,9 +256,9 @@
         "function" : "phaseChart",
         "name" : "Missing By Phase",
         "sql" : [
-            "SELECT t.phaseMask, COUNT(t.id) as count",
+            "SELECT IFNULL(t.phaseMask, 0), COUNT(t.id) as count",
             "FROM trials as t",
-            "WHERE t.resultsDate = 0",
+            "WHERE t.resultsDate IS NULL",
             "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
             "GROUP BY t.phaseMask",
             "ORDER BY t.phaseMask;"
@@ -322,7 +322,7 @@
             "FROM trials AS t, sponsors, sponsorClasses",
             "WHERE t.sponsor_id = sponsors.id",
             "AND sponsors.class_id = sponsorClasses.id",
-            "AND resultsDate = 0",
+            "AND resultsDate IS NULL",
             "AND t.completionDate BETWEEN date('2000-01-01') AND date('now', '-1 year')",
             "GROUP BY class;"
         ],

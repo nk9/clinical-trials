@@ -2,7 +2,7 @@
 #from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy import Table, Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, ForeignKey
 
 ###
 # Model classes
@@ -91,10 +91,10 @@ class Trial(Base, CTrialsModelMixin):
 	nctID = Column(String)
 	title = Column(String)
 	status = Column(String)
-	startDate = Column(String)
-	completionDate = Column(String)
-	primaryCompletionDate = Column(String)
-	resultsDate = Column(String)
+	startDate = Column(Date)
+	completionDate = Column(Date)
+	primaryCompletionDate = Column(Date)
+	resultsDate = Column(Date)
 	phaseMask = Column(Integer)
 	includedInPrayle = Column(Boolean)
 

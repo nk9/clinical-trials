@@ -38,12 +38,14 @@ def main():
 			currentID = line[5:].strip()
 			queries[currentID] = []
 
-			print "Added '" + currentID + "'"
-
 	sqlFile.close()
 
 	for (id, sql) in queries.iteritems():
-		jsonDict[id]['sql'] = sql
+		if id in jsonDict:
+			jsonDict[id]['sql'] = sql
+			print "Added '" + id + "'"
+		else:
+			print "'%s' missing from %s" % (id, chartsFileName)
 
 
 	chartsJSONFile = open(chartsFileName, "w")
