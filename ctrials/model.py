@@ -44,7 +44,7 @@ class InterventionType(Base, CTrialsModelMixin):
 class Intervention(Base, CTrialsModelMixin):
 	__tablename__ = 'interventions'
 
-	trial_id = Column(Integer, ForeignKey("trials.id"))
+	trial_id = Column(Integer, ForeignKey("trials.id", ondelete='cascade'))
 	type_id = Column(Integer, ForeignKey("interventionTypes.id"))
 	name = Column(String)
 
@@ -88,7 +88,7 @@ trial_countries = Table('trialCountries', Base.metadata,
 class Trial(Base, CTrialsModelMixin):
 	__tablename__ = 'trials'
 
-	nctID = Column(String)
+	nctID = Column(String, unique=True, nullable=False)
 	title = Column(String)
 	status = Column(String)
 	startDate = Column(Date)
@@ -107,9 +107,9 @@ class Trial(Base, CTrialsModelMixin):
 	countries = relationship('Country', secondary=trial_countries, backref='trials')
 
 	sponsor_id = Column(Integer, ForeignKey("sponsors.id"))
-	sponsor = relationship('Sponsor')
+	sponsor = relationship('Sponsor', secondary=sponsors, backref='trials')
 
-	interventions = relationship('Intervention')
+	interventions = relationship('Intervention', cascade="all, delete, delete-orphan", single_parent=True)
 
 	def __init__(self, nctID):
 		self.nctID = nctID
@@ -125,3 +125,9 @@ class Country(Base, CTrialsModelMixin):
 		self.name = name
 
 
+# http://stackoverflow.com/a/9264556/1749551
+@event.listens_for(Session, 'after_flush')
+def delete_sponsor_orphans(session, ctx):
+    session.query(Sponsor).\
+        filter(~Sponsor.trials.any()).\
+        delete(synchronize_session=False)

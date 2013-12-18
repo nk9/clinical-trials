@@ -47,9 +47,6 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 			if not filename.endswith('xml'):
 				continue
 
-			if limit > 0 and numberParsed > limit:
-				break
-
 			if skipFile:
 				m = idNumRE.match(filename)
 				thisID = 0
@@ -66,29 +63,32 @@ def create(dbPath, xmlFilesPath, startNumber, limit=0):
 				
 				importer.addTrial(xmlTrial)
 				numberParsed += 1
+
+			if limit > 0 and numberParsed >= limit:
+				break
 	
 	importer.commitTrials()
 	db.close()
 
 
 def update(dbPath, zipfile):
-	# db = DBManager(dbPath, mutable=True)
-	# db.open()
+	db = DBManager(dbPath, mutable=True)
+	db.open()
 
-	# importer = TrialImporter(db)
+	importer = TrialImporter(db)
 
 	for name in zipfile.namelist():
-		nctID = os.path.basename(name)
+		nctID = os.path.splitext(name)[0]
 		data = zipfile.read(name)
 		xmlTrial = XMLTrial(data, nctID)
 		xmlTrial.populate()
 
-		print xmlTrial.title
+		print "%s %s" % (nctID, xmlTrial.title)
 
-	# 	importer.updateTrial(xmlTrial)
+		importer.updateTrial(xmlTrial)
 
-	# importer.commitTrials()
-	# db.close()
+	importer.commitTrials()
+	db.close()
 
 
 
@@ -161,6 +161,13 @@ class DBManager(object):
 			return instance	#, True
 
 
+	def deleteTrialWithNCTID(self, nctID):
+		trial = self.session.query(Trial).filter_by(nctID=nctID).first()
+
+		if trial:
+			self.session.delete(trial)
+
+
 	def commitContent(self):
 		self.session.commit()
 
@@ -221,6 +228,11 @@ class TrialImporter(object):
 			interventions = self.insertInterventions(xmlTrial)
 
 			trial = self.insertTrial(xmlTrial, sponsor, countries, interventions)
+
+
+	def updateTrial(self, xmlTrial):
+		self.db.deleteTrialWithNCTID(xmlTrial.nctID)
+		self.addTrial(xmlTrial)
 	
 
 	def sqlDate(self, date):
