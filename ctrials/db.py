@@ -161,11 +161,15 @@ class DBManager(object):
 			return instance	#, True
 
 
-	def deleteTrialWithNCTID(self, nctID):
+	def deleteTrialWithNCTIDIfNeeded(self, nctID, lastChangedDate):
+		deleted = False
 		trial = self.session.query(Trial).filter_by(nctID=nctID).first()
 
-		if trial:
+		if trial and trial.lastChangedDate < lastChangedDate:
+			deleted = True
 			self.session.delete(trial)
+
+		return deleted
 
 
 	def commitContent(self):
@@ -231,8 +235,9 @@ class TrialImporter(object):
 
 
 	def updateTrial(self, xmlTrial):
-		self.db.deleteTrialWithNCTID(xmlTrial.nctID)
-		self.addTrial(xmlTrial)
+		if self.db.deleteTrialWithNCTIDIfNeeded(xmlTrial.nctID, xmlTrial.lastChangedDate):
+			print "newer trial data imported for %s" % xmlTrial.nctID
+			self.addTrial(xmlTrial)
 	
 
 	def sqlDate(self, date):

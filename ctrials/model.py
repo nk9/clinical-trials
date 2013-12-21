@@ -3,6 +3,8 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import Table, Column, Integer, String, Boolean, Date, ForeignKey
+from sqlalchemy import event
+from sqlalchemy.orm import sessionmaker
 
 ###
 # Model classes
@@ -107,7 +109,7 @@ class Trial(Base, CTrialsModelMixin):
 	countries = relationship('Country', secondary=trial_countries, backref='trials')
 
 	sponsor_id = Column(Integer, ForeignKey("sponsors.id"))
-	sponsor = relationship('Sponsor', secondary=sponsors, backref='trials')
+	sponsor = relationship('Sponsor', backref='trials')
 
 	interventions = relationship('Intervention', cascade="all, delete, delete-orphan", single_parent=True)
 
@@ -125,9 +127,12 @@ class Country(Base, CTrialsModelMixin):
 		self.name = name
 
 
+Session = sessionmaker()
+
 # http://stackoverflow.com/a/9264556/1749551
 @event.listens_for(Session, 'after_flush')
 def delete_sponsor_orphans(session, ctx):
-    session.query(Sponsor).\
-        filter(~Sponsor.trials.any()).\
-        delete(synchronize_session=False)
+	print "after_flush has run"
+	session.query(Sponsor).\
+		filter(~Sponsor.trials.any()).\
+		delete(synchronize_session=False)

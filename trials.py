@@ -3,10 +3,8 @@
 import argparse
 import ctrials.db as db
 import ctrials.charts as charts
+import ctrials.updater as updater
 import os
-from clinical_trials_python.clinical_trials import Trials
-from zipfile import ZipFile
-from StringIO import StringIO
 
 def main():
 	# Handle the arguments
@@ -28,13 +26,10 @@ def main():
 	charts.create(args.chartsPath, args.dbPath, args.force)
 
 
-
 def update(dbPath):
-	zipData = Trials().download('pediatric', lastUpdatedStart='04/01/2013', lastUpdatedEnd='4/30/2013')
-	zipfile = ZipFile(StringIO(zipData))
-	print zipfile.namelist()
+	update = updater.Updater(dbPath)
+	update.update
 
-	db.update(dbPath, zipfile)
 
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Manage and data mine a clinical trials database')
@@ -61,4 +56,4 @@ def parseArguments():
 
 # Default function is main()
 if __name__ == '__main__':
-    main()
+	main()
