@@ -127,11 +127,9 @@ class Country(Base, CTrialsModelMixin):
 		self.name = name
 
 
-Session = sessionmaker()
 
 # http://stackoverflow.com/a/9264556/1749551
-@event.listens_for(Session, 'after_flush')
-def delete_sponsor_orphans(session, ctx):
+def deleteSponsorOrphans(session, ctx):
 	print "after_flush has run"
 	session.query(Sponsor).\
 		filter(~Sponsor.trials.any()).\

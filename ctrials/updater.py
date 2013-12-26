@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import db as db
+import db
 from zipfile import ZipFile
 from StringIO import StringIO
 from Queue import Queue, PriorityQueue
@@ -26,9 +26,7 @@ class Updater(object):
 		sqlaThread.daemon = True
 		sqlaThread.start()
 
-		# TODO: Fetch the real start date
-		# startDate = dt.date(2013, 03, 15)
-		startDate = dt.date(2013,12, 18)
+		startDate = self.fetchStartDate()
 		delta = dt.date.today() - startDate
 		dateList = [startDate + dt.timedelta(days=x) for x in range(0, delta.days)]
 
@@ -52,6 +50,25 @@ class Updater(object):
 		xmlTrialQ.join() # block until all xmlTrials have been created
 
 
+	def fetchStartDate(self):
+		startDate = None
+
+		try:
+			database = db.DBManager(self.dbPath, mutable=True)
+			database.open()
+
+			startDate = database.newestLastChangedDate()
+
+			database.close()
+		except db.DBException as e:
+			print e
+			sys.exit(1)
+
+		return startDate
+
+
+
+
 	def fetchUpdatedTrials(self, dateQ, xmlTrialQ):
 		print "-fetchUpdatedTrials"
 		keepFetching = True
@@ -72,7 +89,7 @@ class Updater(object):
 				continue
 
 			if len(data) == 0:
-				print "No trials for %s" % dateString
+				print "++++No trials for %s (%d)" % (dateString, currentDate.weekday())
 			else:
 				try:
 					zipfile = ZipFile(StringIO(data))

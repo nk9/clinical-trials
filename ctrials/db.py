@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import xml.etree.ElementTree as xml
-from datetime import datetime as dt
+import datetime as dt
 import os, sys, time, re
 import sqlite3
 import json
@@ -10,9 +10,9 @@ from . import utils
 from model import *
 
 #SQLAlchemy
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, func
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy.sql.expression import ClauseElement, desc
 
 
 def main():
@@ -143,10 +143,20 @@ class DBManager(object):
 		URL = 'sqlite:///%s' % self.path
 		self.engine = create_engine(URL, echo=False)
 		event.listen(self.engine, 'connect', self.pragmaOnConnect)
-		sessionMaker = sessionmaker(bind=self.engine)
-		self.session = sessionMaker()
+
+		self.sessionMaker = sessionmaker(bind=self.engine)
+		event.listen(self.sessionMaker, 'after_flush', deleteSponsorOrphans)
+
+		self.session = self.sessionMaker()
 
 		Base.metadata.create_all(self.engine)
+
+
+	def newestLastChangedDate(self):
+		q = self.session.query(Trial.lastChangedDate).\
+					order_by(desc(Trial.lastChangedDate))
+
+		return q.first()[0]
 
 
 	def getOrCreate(self, model, defaults=None, **kwargs):
@@ -162,14 +172,17 @@ class DBManager(object):
 
 
 	def deleteTrialWithNCTIDIfNeeded(self, nctID, lastChangedDate):
-		deleted = False
+		shouldAdd = True
 		trial = self.session.query(Trial).filter_by(nctID=nctID).first()
 
-		if trial and trial.lastChangedDate < lastChangedDate:
-			deleted = True
-			self.session.delete(trial)
+		if trial:
+			if trial.lastChangedDate < lastChangedDate:
+				self.session.delete(trial)
+			else:
+				shouldAdd = False
+			
 
-		return deleted
+		return shouldAdd
 
 
 	def commitContent(self):
@@ -199,9 +212,6 @@ class DBManager(object):
 	def executeAndFetchAll(self, *sql):
 		self.cursor.execute(*sql)
 		return self.cursor.fetchall()
-
-
-
 
 
 
@@ -415,10 +425,10 @@ class XMLTrial(object):
 		
 		if len(stringToParse):
 			try:
-				outDate = dt.strptime(stringToParse, '%B %d, %Y').date()
+				outDate = dt.datetime.strptime(stringToParse, '%B %d, %Y').date()
 			except Exception as e:
 				try:
-					outDate = dt.strptime(stringToParse, '%B %Y').date()
+					outDate = dt.datetime.strptime(stringToParse, '%B %Y').date()
 				except Exception as e:
 					print "Failed parsing date for %s, '%s': %s" % (self.nctID, stringToParse, e)
 		
